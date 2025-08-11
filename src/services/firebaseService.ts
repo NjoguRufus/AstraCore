@@ -98,9 +98,9 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'createdAt
       throw new Error('Missing required project fields');
     }
 
-    // Validate assignedTo array
-    if (!projectData.assignedTo || projectData.assignedTo.length === 0) {
-      throw new Error('Project must be assigned to at least one team member');
+    // Validate that project has assignments (either assignedTo or assignedTeam)
+    if ((!projectData.assignedTo || projectData.assignedTo.length === 0) && !projectData.assignedTeam) {
+      throw new Error('Project must be assigned to at least one team member or team');
     }
 
     // Ensure assignedTo is always an array and filter out invalid values

@@ -73,7 +73,7 @@ export const AdminDashboard: React.FC = () => {
     description: '',
     assignedTo: [] as string[],
     assignedTeam: '',
-    assignedType: '' as '' | 'individual' | 'team',
+    assignedType: '' as '' | 'individual' | 'team' | 'hybrid',
     status: 'upcoming' as 'upcoming' | 'in-progress' | 'completed',
     deadline: ''
   });
@@ -83,7 +83,10 @@ export const AdminDashboard: React.FC = () => {
   const [announcementForm, setAnnouncementForm] = useState({
     title: '',
     content: '',
-    priority: 'medium' as 'low' | 'medium' | 'high'
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    targetType: '' as '' | 'all' | 'team' | 'individual',
+    targetTeam: '',
+    targetMembers: [] as string[]
   });
 
   const activeMembers = users?.filter(u => u.status === 'active') || [];
@@ -94,6 +97,20 @@ export const AdminDashboard: React.FC = () => {
   // Helper function to get team members
   const getTeamMembers = (teamName: string) => {
     return activeMembers.filter(member => member.team === teamName);
+  };
+  
+  // Helper function to get target audience count
+  const getTargetAudienceCount = () => {
+    switch (announcementForm.targetType) {
+      case 'all':
+        return activeMembers.length;
+      case 'team':
+        return announcementForm.targetTeam ? getTeamMembers(announcementForm.targetTeam).length : 0;
+      case 'individual':
+        return announcementForm.targetMembers.length;
+      default:
+        return 0;
+    }
   };
   
   // Helper function to handle team assignment
@@ -337,12 +354,38 @@ export const AdminDashboard: React.FC = () => {
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!announcementForm.title || !announcementForm.content) return;
+    
+    // Validate targeting
+    if (announcementForm.targetType === 'team' && !announcementForm.targetTeam) {
+      showNotification({
+        title: 'Validation Error',
+        message: 'Please select a team for team targeting.',
+        type: 'warning'
+      });
+      return;
+    }
+    
+    if (announcementForm.targetType === 'individual' && announcementForm.targetMembers.length === 0) {
+      showNotification({
+        title: 'Validation Error',
+        message: 'Please select at least one member for individual targeting.',
+        type: 'warning'
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
       await createAnnouncement(announcementForm);
 
-      setAnnouncementForm({ title: '', content: '', priority: 'medium' });
+      setAnnouncementForm({ 
+        title: '', 
+        content: '', 
+        priority: 'medium',
+        targetType: '',
+        targetTeam: '',
+        targetMembers: []
+      });
       setShowCreateAnnouncement(false);
       showNotification({
         title: 'Success',
@@ -942,6 +985,9 @@ export const AdminDashboard: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Assignment Type
                   </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Choose how to assign this project. You can assign to individual members, an entire team, or use hybrid assignment for more flexibility.
+                  </p>
                   <select
                     value={projectForm.assignedType}
                     onChange={(e) => {
@@ -949,6 +995,8 @@ export const AdminDashboard: React.FC = () => {
                         setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '', assignedType: 'team' }));
                       } else if (e.target.value === 'individual') {
                         setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '', assignedType: 'individual' }));
+                      } else if (e.target.value === 'hybrid') {
+                        setProjectForm(prev => ({ ...prev, assignedType: 'hybrid' }));
                       } else {
                         setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '', assignedType: '' }));
                       }
@@ -956,10 +1004,48 @@ export const AdminDashboard: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select assignment type</option>
-                    <option value="individual">Assign to Individual</option>
-                    <option value="team">Assign to Team</option>
+                    <option value="individual">Assign to Individual Members</option>
+                    <option value="team">Assign to Entire Team</option>
+                    <option value="hybrid">Assign to Team + Specific Members</option>
                   </select>
                 </div>
+
+                {/* Team Selection for Team/Hybrid Assignment */}
+                {(projectForm.assignedType === 'team' || projectForm.assignedType === 'hybrid') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Team
+                    </label>
+                    <select
+                      value={projectForm.assignedTeam}
+                      onChange={(e) => {
+                        const selectedTeam = e.target.value;
+                        setProjectForm(prev => ({ ...prev, assignedTeam: selectedTeam }));
+                        // If hybrid mode, show team members for additional selection
+                        if (projectForm.assignedType === 'hybrid' && selectedTeam) {
+                          const teamMembers = getTeamMembers(selectedTeam);
+                          setProjectForm(prev => ({ 
+                            ...prev, 
+                            assignedTeam: selectedTeam,
+                            // Pre-select all team members
+                            assignedTo: teamMembers.map(m => m.uid)
+                          }));
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select a team</option>
+                      {teams?.map((team) => {
+                        const teamMembers = getTeamMembers(team.name);
+                        return (
+                          <option key={team.id} value={team.name}>
+                            {team.name} ({teamMembers.length} members)
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
 
                 {/* Individual Member Selection */}
                 {projectForm.assignedType === 'individual' && (
@@ -967,9 +1053,76 @@ export const AdminDashboard: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Select Team Members
                     </label>
+                    <div className="space-y-3">
+                      {/* Team Filter */}
+                      <div>
+                        <select
+                          value={projectForm.assignedTeam || ''}
+                          onChange={(e) => setProjectForm(prev => ({ ...prev, assignedTeam: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="">All Teams</option>
+                          {teams?.map((team) => (
+                            <option key={team.id} value={team.name}>
+                              {team.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {/* Member List */}
+                      <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-2">
+                        {activeMembers
+                          .filter(member => !projectForm.assignedTeam || member.team === projectForm.assignedTeam)
+                          .map((member) => (
+                            <label key={member.uid} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                              <input
+                                type="checkbox"
+                                checked={projectForm.assignedTo.includes(member.uid)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setProjectForm(prev => ({
+                                      ...prev,
+                                      assignedTo: [...prev.assignedTo, member.uid]
+                                    }));
+                                  } else {
+                                    setProjectForm(prev => ({
+                                      ...prev,
+                                      assignedTo: prev.assignedTo.filter(id => id !== member.uid)
+                                    }));
+                                  }
+                                }}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <span className="text-sm font-medium text-gray-700">{member.name}</span>
+                                <span className="text-xs text-gray-500 ml-2">({member.role})</span>
+                                <span className="text-xs text-gray-400 ml-2">• {member.team}</span>
+                              </div>
+                            </label>
+                          ))}
+                        {activeMembers.filter(member => !projectForm.assignedTeam || member.team === projectForm.assignedTeam).length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-2">
+                            {projectForm.assignedTeam ? `No members found in ${projectForm.assignedTeam}` : 'No active members found'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hybrid Member Selection (Team + Specific Members) */}
+                {projectForm.assignedType === 'hybrid' && projectForm.assignedTeam && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Additional Member Selection (Optional)
+                    </label>
+                    <p className="text-xs text-gray-500 mb-2">
+                      All team members are pre-selected. You can deselect specific members if needed.
+                    </p>
                     <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-2">
-                      {activeMembers.map((member) => (
-                        <label key={member.uid} className="flex items-center space-x-2 cursor-pointer">
+                      {getTeamMembers(projectForm.assignedTeam).map((member) => (
+                        <label key={member.uid} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
                           <input
                             type="checkbox"
                             checked={projectForm.assignedTo.includes(member.uid)}
@@ -988,41 +1141,13 @@ export const AdminDashboard: React.FC = () => {
                             }}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
-                          <span className="text-sm text-gray-700">
-                            {member.name} ({member.role}) - {member.uid} - {member.team}
-                          </span>
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-gray-700">{member.name}</span>
+                            <span className="text-xs text-gray-500 ml-2">({member.role})</span>
+                          </div>
                         </label>
                       ))}
-                      {activeMembers.length === 0 && (
-                        <p className="text-sm text-gray-500 text-center py-2">No active members found</p>
-                      )}
-                      
-
                     </div>
-                  </div>
-                )}
-
-                {/* Team Selection */}
-                {projectForm.assignedType === 'team' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Team
-                    </label>
-                    <select
-                      value={projectForm.assignedTeam}
-                                             onChange={(e) => handleTeamAssignment(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select a team</option>
-                                             {teams?.map((team) => {
-                         const teamMembers = getTeamMembers(team.name);
-                         return (
-                           <option key={team.id} value={team.name}>
-                             {team.name} ({teamMembers.length} members)
-                           </option>
-                         );
-                       })}
-                    </select>
                   </div>
                 )}
 
@@ -1030,26 +1155,64 @@ export const AdminDashboard: React.FC = () => {
                 {(projectForm.assignedTo.length > 0 || projectForm.assignedTeam) && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <h4 className="text-sm font-medium text-blue-900 mb-2">Assignment Summary:</h4>
+                    
                     {projectForm.assignedType === 'team' && projectForm.assignedTeam ? (
-                      <p className="text-sm text-blue-700">
-                        Team: <span className="font-medium">{projectForm.assignedTeam}</span> 
-                        ({projectForm.assignedTo.length} members)
-                      </p>
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Team Assignment:</span> {projectForm.assignedTeam}
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          All team members will be assigned to this project
+                        </p>
+                      </div>
                     ) : projectForm.assignedType === 'individual' && projectForm.assignedTo.length > 0 ? (
                       <div>
-                        <p className="text-sm text-blue-700 mb-1">Individual Members:</p>
-                        <div className="space-y-1">
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Individual Members:</span> {projectForm.assignedTo.length} selected
+                        </p>
+                        <div className="space-y-1 max-h-20 overflow-y-auto">
                           {projectForm.assignedTo.map((memberId) => {
                             const member = activeMembers.find(m => m.uid === memberId);
                             return member ? (
-                              <p key={memberId} className="text-sm text-blue-600">
-                                • {member.name} ({member.role})
+                              <p key={memberId} className="text-sm text-blue-600 flex items-center space-x-2">
+                                <span>•</span>
+                                <span>{member.name}</span>
+                                <span className="text-xs text-blue-500">({member.role})</span>
+                                <span className="text-xs text-blue-400">• {member.team}</span>
+                              </p>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    ) : projectForm.assignedType === 'hybrid' && projectForm.assignedTeam ? (
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Hybrid Assignment:</span> {projectForm.assignedTeam} team
+                        </p>
+                        <p className="text-sm text-blue-600 mb-1">
+                          Selected members: {projectForm.assignedTo.length} out of {getTeamMembers(projectForm.assignedTeam).length}
+                        </p>
+                        <div className="space-y-1 max-h-20 overflow-y-auto">
+                          {projectForm.assignedTo.map((memberId) => {
+                            const member = activeMembers.find(m => m.uid === memberId);
+                            return member ? (
+                              <p key={memberId} className="text-sm text-blue-600 flex items-center space-x-2">
+                                <span>•</span>
+                                <span>{member.name}</span>
+                                <span className="text-xs text-blue-500">({member.role})</span>
                               </p>
                             ) : null;
                           })}
                         </div>
                       </div>
                     ) : null}
+                    
+                    <div className="mt-2 pt-2 border-t border-blue-200">
+                      <p className="text-xs text-blue-600">
+                        Total assignments: {projectForm.assignedTo.length} member{projectForm.assignedTo.length !== 1 ? 's' : ''}
+                        {projectForm.assignedTeam && projectForm.assignedType === 'team' ? ' (entire team)' : ''}
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -1124,6 +1287,122 @@ export const AdminDashboard: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Target Audience
+                  </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Choose who should receive this announcement. You can target all members, a specific team, or select individual members.
+                  </p>
+                  <select
+                    value={announcementForm.targetType}
+                    onChange={(e) => {
+                      const targetType = e.target.value as '' | 'all' | 'team' | 'individual';
+                      setAnnouncementForm(prev => ({ 
+                        ...prev, 
+                        targetType,
+                        targetTeam: '',
+                        targetMembers: []
+                      }));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select target audience</option>
+                    <option value="all">All Members</option>
+                    <option value="team">Specific Team</option>
+                    <option value="individual">Specific Members</option>
+                  </select>
+                </div>
+
+                {/* Team Selection for Team Targeting */}
+                {announcementForm.targetType === 'team' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Team
+                    </label>
+                    <select
+                      value={announcementForm.targetTeam}
+                      onChange={(e) => setAnnouncementForm(prev => ({ ...prev, targetTeam: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select a team</option>
+                      {teams?.map((team) => {
+                        const teamMembers = getTeamMembers(team.name);
+                        return (
+                          <option key={team.id} value={team.name}>
+                            {team.name} ({teamMembers.length} members)
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+
+                {/* Individual Member Selection */}
+                {announcementForm.targetType === 'individual' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Members
+                    </label>
+                    <div className="space-y-3">
+                      {/* Team Filter */}
+                      <div>
+                        <select
+                          value={announcementForm.targetTeam || ''}
+                          onChange={(e) => setAnnouncementForm(prev => ({ ...prev, targetTeam: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="">All Teams</option>
+                          {teams?.map((team) => (
+                            <option key={team.id} value={team.name}>
+                              {team.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {/* Member List */}
+                      <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-2">
+                        {activeMembers
+                          .filter(member => !announcementForm.targetTeam || member.team === announcementForm.targetTeam)
+                          .map((member) => (
+                            <label key={member.uid} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                              <input
+                                type="checkbox"
+                                checked={announcementForm.targetMembers.includes(member.uid)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setAnnouncementForm(prev => ({
+                                      ...prev,
+                                      targetMembers: [...prev.targetMembers, member.uid]
+                                    }));
+                                  } else {
+                                    setAnnouncementForm(prev => ({
+                                      ...prev,
+                                      targetMembers: prev.targetMembers.filter(id => id !== member.uid)
+                                    }));
+                                  }
+                                }}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <span className="text-sm font-medium text-gray-700">{member.name}</span>
+                                <span className="text-xs text-gray-500 ml-2">({member.role})</span>
+                                <span className="text-xs text-gray-400 ml-2">• {member.team}</span>
+                              </div>
+                            </label>
+                          ))}
+                        {activeMembers.filter(member => !announcementForm.targetTeam || member.team === announcementForm.targetTeam).length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-2">
+                            {announcementForm.targetTeam ? `No members found in ${announcementForm.targetTeam}` : 'No active members found'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Priority Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Priority
                   </label>
                   <select
@@ -1137,12 +1416,64 @@ export const AdminDashboard: React.FC = () => {
                   </select>
                 </div>
 
+                {/* Target Summary */}
+                {announcementForm.targetType && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-blue-900 mb-2">Target Summary:</h4>
+                    
+                    {announcementForm.targetType === 'all' ? (
+                      <p className="text-sm text-blue-700">
+                        <span className="font-medium">All Members:</span> {activeMembers.length} active members
+                      </p>
+                    ) : announcementForm.targetType === 'team' && announcementForm.targetTeam ? (
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Team:</span> {announcementForm.targetTeam}
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          {getTeamMembers(announcementForm.targetTeam).length} members will receive this announcement
+                        </p>
+                      </div>
+                    ) : announcementForm.targetType === 'individual' && announcementForm.targetMembers.length > 0 ? (
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Selected Members:</span> {announcementForm.targetMembers.length} selected
+                        </p>
+                        <div className="space-y-1 max-h-20 overflow-y-auto">
+                          {announcementForm.targetMembers.map((memberId) => {
+                            const member = activeMembers.find(m => m.uid === memberId);
+                            return member ? (
+                              <p key={memberId} className="text-sm text-blue-600 flex items-center space-x-2">
+                                <span>•</span>
+                                <span>{member.name}</span>
+                                <span className="text-xs text-blue-500">({member.role})</span>
+                                <span className="text-xs text-blue-400">• {member.team}</span>
+                              </p>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-yellow-600">
+                        Please select target audience members
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex space-x-3 pt-4">
                   <Button
                     type="button"
                     onClick={() => {
                       setShowCreateAnnouncement(false);
-                      setAnnouncementForm({ title: '', content: '', priority: 'medium' });
+                      setAnnouncementForm({ 
+                        title: '', 
+                        content: '', 
+                        priority: 'medium',
+                        targetType: '',
+                        targetTeam: '',
+                        targetMembers: []
+                      });
                     }}
                     variant="outline"
                     className="flex-1"
@@ -1152,9 +1483,17 @@ export const AdminDashboard: React.FC = () => {
                   <Button
                     type="submit"
                     isLoading={isLoading}
+                    disabled={!announcementForm.targetType || 
+                      (announcementForm.targetType === 'team' && !announcementForm.targetTeam) ||
+                      (announcementForm.targetType === 'individual' && announcementForm.targetMembers.length === 0)}
                     className="flex-1"
                   >
                     Create Announcement
+                    {announcementForm.targetType && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        {getTargetAudienceCount()} target{getTargetAudienceCount() !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </Button>
                 </div>
               </form>

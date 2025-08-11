@@ -18,12 +18,13 @@ import {
   Clock,
   AlertCircle
 } from 'lucide-react';
-import { Project, User } from '../../types';
+import { Project, User, Team } from '../../types';
 import { formatDate, getDaysUntilDeadline, getDeadlineColor, toDate } from '../../utils/dateUtils';
 
 export const ProjectManagement: React.FC = () => {
   const { data: projects } = useCollection<Project>('projects');
   const { data: users } = useCollection<User>('users');
+  const { data: teams } = useCollection<Team>('teams');
   const { showConfirmation, showNotification } = useModal();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,10 +37,16 @@ export const ProjectManagement: React.FC = () => {
     title: '',
     description: '',
     assignedTo: [] as string[],
-    team: '',
+    assignedTeam: '',
+    assignedType: '' as '' | 'individual' | 'team' | 'hybrid',
     status: 'upcoming' as 'upcoming' | 'in-progress' | 'completed',
     deadline: ''
   });
+
+  // Helper function to get team members
+  const getTeamMembers = (teamName: string) => {
+    return users?.filter(member => member.team === teamName) || [];
+  };
 
   const filteredProjects = projects.filter(project => {
     const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -63,7 +70,8 @@ export const ProjectManagement: React.FC = () => {
         title: '',
         description: '',
         assignedTo: [],
-        team: '',
+        assignedTeam: '',
+        assignedType: '',
         status: 'upcoming',
         deadline: ''
       });
@@ -96,7 +104,8 @@ export const ProjectManagement: React.FC = () => {
         title: '',
         description: '',
         assignedTo: [],
-        team: '',
+        assignedTeam: '',
+        assignedType: '',
         status: 'upcoming',
         deadline: ''
       });
@@ -142,7 +151,8 @@ export const ProjectManagement: React.FC = () => {
       title: project.title,
       description: project.description,
       assignedTo: project.assignedTo,
-      team: project.team || '',
+      assignedTeam: project.assignedTeam || '',
+      assignedType: project.assignedTeam ? 'team' : 'individual',
       status: project.status,
       deadline: toDate(project.deadline)?.toISOString().split('T')[0] || ''
     });
@@ -377,16 +387,241 @@ export const ProjectManagement: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Team
+                    Assignment Type
                   </label>
-                  <input
-                    type="text"
-                    value={projectForm.team}
-                    onChange={(e) => setProjectForm(prev => ({ ...prev, team: e.target.value }))}
+                  <p className="text-xs text-gray-500 mb-2">
+                    Choose how to assign this project. You can assign to individual members, an entire team, or use hybrid assignment for more flexibility.
+                  </p>
+                  <p className="text-xs text-blue-600 mb-2">
+                    💡 <strong>Tip:</strong> Use "Team" assignment to assign to all team members, or "Individual" to select specific people.
+                  </p>
+                  <select
+                    value={projectForm.assignedType}
+                    onChange={(e) => {
+                      if (e.target.value === 'team') {
+                        setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '', assignedType: 'team' }));
+                      } else if (e.target.value === 'individual') {
+                        setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '', assignedType: 'individual' }));
+                      } else if (e.target.value === 'hybrid') {
+                        setProjectForm(prev => ({ ...prev, assignedType: 'hybrid' }));
+                      } else {
+                        setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '', assignedType: '' }));
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., Frontend Team"
-                  />
+                  >
+                    <option value="">Select assignment type</option>
+                    <option value="individual">Assign to Individual Members</option>
+                    <option value="team">Assign to Entire Team</option>
+                    <option value="hybrid">Assign to Team + Specific Members</option>
+                  </select>
                 </div>
+
+                {/* Team Selection for Team/Hybrid Assignment */}
+                {(projectForm.assignedType === 'team' || projectForm.assignedType === 'hybrid') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Team
+                    </label>
+                    <select
+                      value={projectForm.assignedTeam}
+                      onChange={(e) => {
+                        const selectedTeam = e.target.value;
+                        setProjectForm(prev => ({ ...prev, assignedTeam: selectedTeam }));
+                        // If hybrid mode, show team members for additional selection
+                        if (projectForm.assignedType === 'hybrid' && selectedTeam) {
+                          const teamMembers = getTeamMembers(selectedTeam);
+                          setProjectForm(prev => ({ 
+                            ...prev, 
+                            assignedTeam: selectedTeam,
+                            // Pre-select all team members
+                            assignedTo: teamMembers.map(m => m.uid)
+                          }));
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select a team</option>
+                      {teams?.map((team) => {
+                        const teamMembers = getTeamMembers(team.name);
+                        return (
+                          <option key={team.id} value={team.name}>
+                            {team.name} ({teamMembers.length} members)
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+
+                {/* Individual Member Selection */}
+                {projectForm.assignedType === 'individual' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Team Members
+                    </label>
+                    <div className="space-y-3">
+                      {/* Team Filter */}
+                      <div>
+                        <select
+                          value={projectForm.assignedTeam || ''}
+                          onChange={(e) => setProjectForm(prev => ({ ...prev, assignedTeam: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="">All Teams</option>
+                          {teams?.map((team) => (
+                            <option key={team.id} value={team.name}>
+                              {team.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {/* Member List */}
+                      <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-2">
+                        {users
+                          ?.filter(member => !projectForm.assignedTeam || member.team === projectForm.assignedTeam)
+                          .map((member) => (
+                            <label key={member.uid} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                              <input
+                                type="checkbox"
+                                checked={projectForm.assignedTo.includes(member.uid)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setProjectForm(prev => ({
+                                      ...prev,
+                                      assignedTo: [...prev.assignedTo, member.uid]
+                                    }));
+                                  } else {
+                                    setProjectForm(prev => ({
+                                      ...prev,
+                                      assignedTo: prev.assignedTo.filter(id => id !== member.uid)
+                                    }));
+                                  }
+                                }}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <span className="text-sm font-medium text-gray-700">{member.name}</span>
+                                <span className="text-xs text-gray-500 ml-2">({member.role})</span>
+                                <span className="text-xs text-gray-400 ml-2">• {member.team}</span>
+                              </div>
+                            </label>
+                          ))}
+                        {users?.filter(member => !projectForm.assignedTeam || member.team === projectForm.assignedTeam).length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-2">
+                            {projectForm.assignedTeam ? `No members found in ${projectForm.assignedTeam}` : 'No active members found'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hybrid Member Selection (Team + Specific Members) */}
+                {projectForm.assignedType === 'hybrid' && projectForm.assignedTeam && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Additional Member Selection (Optional)
+                    </label>
+                    <p className="text-xs text-gray-500 mb-2">
+                      All team members are pre-selected. You can deselect specific members if needed.
+                    </p>
+                    <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-2">
+                      {getTeamMembers(projectForm.assignedTeam).map((member) => (
+                        <label key={member.uid} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                          <input
+                            type="checkbox"
+                            checked={projectForm.assignedTo.includes(member.uid)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setProjectForm(prev => ({
+                                  ...prev,
+                                  assignedTo: [...prev.assignedTo, member.uid]
+                                }));
+                              } else {
+                                setProjectForm(prev => ({
+                                  ...prev,
+                                  assignedTo: prev.assignedTo.filter(id => id !== member.uid)
+                                }));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-gray-700">{member.name}</span>
+                            <span className="text-xs text-gray-500 ml-2">({member.role})</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Assignment Summary */}
+                {(projectForm.assignedTo.length > 0 || projectForm.assignedTeam) && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-blue-900 mb-2">Assignment Summary:</h4>
+                    
+                    {projectForm.assignedType === 'team' && projectForm.assignedTeam ? (
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Team Assignment:</span> {projectForm.assignedTeam}
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          All team members will be assigned to this project
+                        </p>
+                      </div>
+                    ) : projectForm.assignedType === 'individual' && projectForm.assignedTo.length > 0 ? (
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Individual Members:</span> {projectForm.assignedTo.length} selected
+                        </p>
+                        <div className="space-y-1 max-h-20 overflow-y-auto">
+                          {projectForm.assignedTo.map((memberId) => {
+                            const member = users?.find(m => m.uid === memberId);
+                            return member ? (
+                              <p key={memberId} className="text-sm text-blue-600 flex items-center space-x-2">
+                                <span>•</span>
+                                <span>{member.name}</span>
+                                <span className="text-xs text-blue-500">({member.role})</span>
+                                <span className="text-xs text-blue-400">• {member.team}</span>
+                              </p>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    ) : projectForm.assignedType === 'hybrid' && projectForm.assignedTeam ? (
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Hybrid Assignment:</span> {projectForm.assignedTeam} team
+                        </p>
+                        <p className="text-sm text-blue-600 mb-1">
+                          Selected members: {projectForm.assignedTo.length} out of {getTeamMembers(projectForm.assignedTeam).length}
+                        </p>
+                        <div className="space-y-1 max-h-20 overflow-y-auto">
+                          {projectForm.assignedTo.map((memberId) => {
+                            const member = users?.find(m => m.uid === memberId);
+                            return member ? (
+                              <p key={memberId} className="text-sm text-blue-600 flex items-center space-x-2">
+                                <span>•</span>
+                                <span>{member.name}</span>
+                                <span className="text-xs text-blue-500">({member.role})</span>
+                              </p>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                    
+                    <div className="mt-2 pt-2 border-t border-blue-200">
+                      <p className="text-xs text-blue-600">
+                        Total assignments: {projectForm.assignedTo.length} member{projectForm.assignedTo.length !== 1 ? 's' : ''}
+                        {projectForm.assignedTeam && projectForm.assignedType === 'team' ? ' (entire team)' : ''}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -426,7 +661,8 @@ export const ProjectManagement: React.FC = () => {
                         title: '',
                         description: '',
                         assignedTo: [],
-                        team: '',
+                        assignedTeam: '',
+                        assignedType: '',
                         status: 'upcoming',
                         deadline: ''
                       });
@@ -439,9 +675,18 @@ export const ProjectManagement: React.FC = () => {
                   <Button
                     type="submit"
                     isLoading={isLoading}
+                    disabled={!projectForm.assignedType || 
+                      (projectForm.assignedType === 'team' && !projectForm.assignedTeam) ||
+                      (projectForm.assignedType === 'individual' && projectForm.assignedTo.length === 0) ||
+                      (projectForm.assignedType === 'hybrid' && (!projectForm.assignedTeam || projectForm.assignedTo.length === 0))}
                     className="flex-1"
                   >
                     {editingProject ? 'Update' : 'Create'} Project
+                    {projectForm.assignedType && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        {projectForm.assignedTo.length} assignment{projectForm.assignedTo.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </Button>
                 </div>
               </form>
