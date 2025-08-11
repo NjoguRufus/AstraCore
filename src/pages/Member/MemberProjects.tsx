@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useModal } from '../../contexts/ModalContext';
 import { useCollection } from '../../hooks/useFirestore';
 import { updateProject } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
@@ -19,6 +20,7 @@ import { formatDate } from '../../utils/dateUtils';
 
 export const MemberProjects: React.FC = () => {
   const { user } = useAuth();
+  const { showNotification } = useModal();
   const { data: allProjects } = useCollection<Project>('projects');
   
   const [statusFilter, setStatusFilter] = useState('all');
@@ -48,7 +50,11 @@ export const MemberProjects: React.FC = () => {
       await updateProject(projectId, { status: newStatus });
     } catch (error) {
       console.error('Error updating project status:', error);
-      alert('Failed to update project status. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to update project status. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }

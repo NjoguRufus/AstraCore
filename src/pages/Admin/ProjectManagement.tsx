@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCollection } from '../../hooks/useFirestore';
+import { useModal } from '../../contexts/ModalContext';
 import { createProject, updateProject, deleteProject, getUsers } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
@@ -23,6 +24,7 @@ import { formatDate, getDaysUntilDeadline, getDeadlineColor, toDate } from '../.
 export const ProjectManagement: React.FC = () => {
   const { data: projects } = useCollection<Project>('projects');
   const { data: users } = useCollection<User>('users');
+  const { showConfirmation, showNotification } = useModal();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -68,7 +70,11 @@ export const ProjectManagement: React.FC = () => {
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error creating project:', error);
-      alert('Failed to create project. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to create project. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -97,20 +103,36 @@ export const ProjectManagement: React.FC = () => {
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error updating project:', error);
-      alert('Failed to update project. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to update project. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDeleteProject = async (projectId: string) => {
-    if (!confirm('Are you sure you want to delete this project?')) return;
+    const confirmed = await showConfirmation({
+      title: 'Delete Project',
+      message: 'Are you sure you want to delete this project?',
+      type: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
 
     try {
       await deleteProject(projectId);
     } catch (error) {
       console.error('Error deleting project:', error);
-      alert('Failed to delete project. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to delete project. Please try again.',
+        type: 'error'
+      });
     }
   };
 

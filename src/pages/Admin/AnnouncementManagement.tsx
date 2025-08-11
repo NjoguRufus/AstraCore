@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCollection } from '../../hooks/useFirestore';
+import { useModal } from '../../contexts/ModalContext';
 import { createAnnouncement, updateAnnouncement, deleteAnnouncement } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
@@ -20,6 +21,7 @@ import { Timestamp } from 'firebase/firestore';
 
 export const AnnouncementManagement: React.FC = () => {
   const { data: announcements } = useCollection<Announcement>('announcements');
+  const { showConfirmation, showNotification } = useModal();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -72,7 +74,11 @@ export const AnnouncementManagement: React.FC = () => {
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error creating announcement:', error);
-      alert('Failed to create announcement. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to create announcement. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -91,20 +97,36 @@ export const AnnouncementManagement: React.FC = () => {
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error updating announcement:', error);
-      alert('Failed to update announcement. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to update announcement. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDeleteAnnouncement = async (announcementId: string) => {
-    if (!confirm('Are you sure you want to delete this announcement?')) return;
+    const confirmed = await showConfirmation({
+      title: 'Delete Announcement',
+      message: 'Are you sure you want to delete this announcement?',
+      type: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
 
     try {
       await deleteAnnouncement(announcementId);
     } catch (error) {
       console.error('Error deleting announcement:', error);
-      alert('Failed to delete announcement. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to delete announcement. Please try again.',
+        type: 'error'
+      });
     }
   };
 

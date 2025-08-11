@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useCollection } from '../../hooks/useFirestore';
 import { useAuth } from '../../contexts/AuthContext';
+import { useModal } from '../../contexts/ModalContext';
 import { 
   createUser, 
   createProject, 
   createAnnouncement, 
   generateIdCode,
   toggleUserStatus,
-  getContractByUserId
+  getContractByUserId,
+  createTeam,
+  getTeams
 } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
@@ -29,15 +32,19 @@ import {
   UserX,
   Power,
   PowerOff,
-  Download
+  Download,
+  AlertCircle,
+  X
 } from 'lucide-react';
-import { User, Project, Announcement } from '../../types';
+import { User, Project, Announcement, Team } from '../../types';
 
 export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
+  const { showNotification } = useModal();
   const { data: users } = useCollection<User>('users');
   const { data: projects } = useCollection<Project>('projects');
   const { data: announcements } = useCollection<Announcement>('announcements');
+  const { data: teams } = useCollection<Team>('teams');
   
 
 
@@ -59,6 +66,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [showNewTeamInput, setShowNewTeamInput] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
+  const [creatingTeam, setCreatingTeam] = useState(false);
 
   const [projectForm, setProjectForm] = useState({
     title: '',
@@ -82,9 +90,6 @@ export const AdminDashboard: React.FC = () => {
   const deactivatedMembers = users?.filter(u => u.status === 'deactivated') || [];
   
 
-  
-  // Get unique teams from active members
-  const uniqueTeams = Array.from(new Set(activeMembers.map(member => member.team)));
   
   // Helper function to get team members
   const getTeamMembers = (teamName: string) => {
@@ -149,11 +154,19 @@ export const AdminDashboard: React.FC = () => {
         setSelectedMemberContract(contract);
         setShowContractModal(true);
       } else {
-        alert('No contract found for this member.');
+        showNotification({
+          title: 'No Contract Found',
+          message: 'No contract found for this member.',
+          type: 'warning'
+        });
       }
     } catch (error) {
       console.error('Error fetching member contract:', error);
-      alert('Error loading contract. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Error loading contract. Please try again.',
+        type: 'error'
+      });
     } finally {
       setLoadingContract(false);
     }
@@ -171,6 +184,10 @@ export const AdminDashboard: React.FC = () => {
         role: memberForm.role,
         team: memberForm.team,
         skills: [],
+        bio: '', // Default empty bio
+        github: '',
+        linkedin: '',
+        phone: '',
         idCode: memberForm.idCode,
         isAdmin: false,
         status: memberForm.status
@@ -178,10 +195,18 @@ export const AdminDashboard: React.FC = () => {
 
       resetMemberForm();
       setShowCreateMember(false);
-      alert('Team member created successfully!');
+      showNotification({
+        title: 'Success',
+        message: 'Team member created successfully!',
+        type: 'success'
+      });
     } catch (error) {
       console.error('Error creating member:', error);
-      alert('Failed to create member. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to create member. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -193,7 +218,11 @@ export const AdminDashboard: React.FC = () => {
       await toggleUserStatus(userId, newStatus);
     } catch (error) {
       console.error('Error toggling user status:', error);
-      alert('Failed to update user status. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to update user status. Please try again.',
+        type: 'error'
+      });
     }
   };
 
@@ -203,13 +232,21 @@ export const AdminDashboard: React.FC = () => {
     
     // Validate that project has assignments
     if (projectForm.assignedTo.length === 0 && !projectForm.assignedTeam) {
-      alert('Please assign the project to at least one team member or team.');
+      showNotification({
+        title: 'Validation Error',
+        message: 'Please assign the project to at least one team member or team.',
+        type: 'warning'
+      });
       return;
     }
 
     // Validate deadline
     if (!projectForm.deadline) {
-      alert('Please select a project deadline.');
+      showNotification({
+        title: 'Validation Error',
+        message: 'Please select a project deadline.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -226,7 +263,11 @@ export const AdminDashboard: React.FC = () => {
 
       // Validate deadline date
       if (isNaN(cleanProjectData.deadline.getTime())) {
-        alert('Invalid deadline date. Please select a valid date.');
+        showNotification({
+          title: 'Validation Error',
+          message: 'Invalid deadline date. Please select a valid date.',
+          type: 'warning'
+        });
         return;
       }
 
@@ -248,7 +289,11 @@ export const AdminDashboard: React.FC = () => {
 
       // Additional validation for assignedTo array
       if (finalCleanData.assignedTo.length === 0) {
-        alert('Please assign the project to at least one team member.');
+        showNotification({
+          title: 'Validation Error',
+          message: 'Please assign the project to at least one team member.',
+          type: 'warning'
+        });
         return;
       }
 
@@ -256,7 +301,11 @@ export const AdminDashboard: React.FC = () => {
       const invalidIds = finalCleanData.assignedTo.filter((id: any) => !id || typeof id !== 'string' || id.length === 0);
       if (invalidIds.length > 0) {
         console.error('Invalid member IDs found:', invalidIds);
-        alert('Some team member assignments are invalid. Please try selecting members again.');
+        showNotification({
+          title: 'Validation Error',
+          message: 'Some team member assignments are invalid. Please try selecting members again.',
+          type: 'warning'
+        });
         return;
       }
 
@@ -268,10 +317,18 @@ export const AdminDashboard: React.FC = () => {
 
       resetProjectForm();
       setShowCreateProject(false);
-      alert('Project created successfully!');
+      showNotification({
+        title: 'Success',
+        message: 'Project created successfully!',
+        type: 'success'
+      });
     } catch (error) {
       console.error('Error creating project:', error);
-      alert('Failed to create project. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to create project. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -287,10 +344,18 @@ export const AdminDashboard: React.FC = () => {
 
       setAnnouncementForm({ title: '', content: '', priority: 'medium' });
       setShowCreateAnnouncement(false);
-      alert('Announcement created successfully!');
+      showNotification({
+        title: 'Success',
+        message: 'Announcement created successfully!',
+        type: 'success'
+      });
     } catch (error) {
       console.error('Error creating announcement:', error);
-      alert('Failed to create announcement. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to create announcement. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -539,43 +604,37 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {uniqueTeams.map((team) => {
-              const teamMembers = getTeamMembers(team);
-              const teamRoles = Array.from(new Set(teamMembers.map(m => m.role)));
-              
-              return (
-                <div key={team} className="p-4 border border-gray-200 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">{team}</h3>
-                    <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                      {teamMembers.length} members
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Roles:</span> {teamRoles.join(', ')}
-                    </div>
-                    
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Members:</span>
-                    </div>
-                    <div className="space-y-1">
-                      {teamMembers.map((member) => (
-                        <div key={member.uid} className="flex items-center justify-between text-xs">
-                          <span className="text-gray-700">{member.name}</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(member.role)}`}>
-                            {member.role}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                         {teams?.map((team) => {
+               const teamMembers = getTeamMembers(team.name);
+               return (
+                 <div key={team.id} className="p-4 border border-gray-200 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50">
+                   <div className="flex items-center justify-between mb-3">
+                     <h3 className="font-semibold text-gray-900">{team.name}</h3>
+                     <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                       {teamMembers.length} members
+                     </span>
+                   </div>
+                   
+                   <div className="space-y-2">
+                     <div className="text-sm text-gray-600">
+                       <span className="font-medium">Members:</span>
+                     </div>
+                     <div className="space-y-1">
+                       {teamMembers.map((member) => (
+                         <div key={member.uid} className="flex items-center justify-between text-xs">
+                           <span className="text-gray-700">{member.name}</span>
+                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(member.role)}`}>
+                             {member.role}
+                           </span>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 </div>
+               );
+             })}
             
-            {activeMembers.length === 0 && (
+            {teams?.length === 0 && (
               <p className="text-center text-gray-500 py-8 col-span-full">No teams found</p>
             )}
           </div>
@@ -646,6 +705,9 @@ export const AdminDashboard: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Team
                   </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Select an existing team or create a new one. The team will be saved to the database.
+                  </p>
                   <div className="space-y-2">
                     {/* Existing Teams Dropdown */}
                     <select
@@ -663,11 +725,14 @@ export const AdminDashboard: React.FC = () => {
                       required={!showNewTeamInput}
                     >
                       <option value="">Select a team</option>
-                      {uniqueTeams.map((team) => (
-                        <option key={team} value={team}>
-                          {team} ({getTeamMembers(team).length} members)
-                        </option>
-                      ))}
+                                             {teams?.map((team) => {
+                         const teamMembers = getTeamMembers(team.name);
+                         return (
+                           <option key={team.id} value={team.name}>
+                             {team.name} ({teamMembers.length} members)
+                           </option>
+                         );
+                       })}
                       <option value="new">+ Add New Team</option>
                     </select>
 
@@ -682,21 +747,60 @@ export const AdminDashboard: React.FC = () => {
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           required
                         />
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            if (newTeamName.trim()) {
-                              setMemberForm(prev => ({ ...prev, team: newTeamName.trim() }));
-                              setShowNewTeamInput(false);
-                              setNewTeamName('');
-                            }
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="px-3 py-2"
-                        >
-                          Add
-                        </Button>
+                                                  <Button
+                            type="button"
+                            onClick={async () => {
+                              if (newTeamName.trim()) {
+                                // Check if team already exists
+                                if (teams?.some(team => team.name.toLowerCase() === newTeamName.trim().toLowerCase())) {
+                                  showNotification({
+                                    title: 'Team Already Exists',
+                                    message: `A team with the name "${newTeamName.trim()}" already exists.`,
+                                    type: 'warning'
+                                  });
+                                  return;
+                                }
+                                
+                                setCreatingTeam(true);
+                                try {
+                                  // Create the team in Firestore first
+                                  await createTeam({
+                                    name: newTeamName.trim(),
+                                    description: '',
+                                    color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
+                                    createdBy: user?.uid || 'admin',
+                                    isActive: true
+                                  });
+                                  
+                                  // Update the member form with the new team
+                                  setMemberForm(prev => ({ ...prev, team: newTeamName.trim() }));
+                                  setShowNewTeamInput(false);
+                                  setNewTeamName('');
+                                  
+                                  showNotification({
+                                    title: 'Success',
+                                    message: `Team "${newTeamName.trim()}" created and selected successfully!`,
+                                    type: 'success'
+                                  });
+                                } catch (error) {
+                                  console.error('Error creating new team:', error);
+                                  showNotification({
+                                    title: 'Error',
+                                    message: `Failed to create team "${newTeamName.trim()}". Please try again.`,
+                                    type: 'error'
+                                  });
+                                } finally {
+                                  setCreatingTeam(false);
+                                }
+                              }
+                            }}
+                            disabled={creatingTeam || !newTeamName.trim()}
+                            variant="outline"
+                            size="sm"
+                            className="px-3 py-2"
+                          >
+                            {creatingTeam ? 'Creating...' : 'Add'}
+                          </Button>
                         <Button
                           type="button"
                           onClick={() => {
@@ -714,9 +818,25 @@ export const AdminDashboard: React.FC = () => {
 
                     {/* Selected Team Display */}
                     {memberForm.team && !showNewTeamInput && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                        <p className="text-sm text-blue-700">
-                          Selected Team: <span className="font-medium">{memberForm.team}</span>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <p className="text-sm text-green-700">
+                              Selected Team: <span className="font-medium">{memberForm.team}</span>
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setMemberForm(prev => ({ ...prev, team: '' }))}
+                            className="text-green-600 hover:text-green-800"
+                            title="Clear team selection"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-green-600 mt-1">
+                          ✓ Team is ready for member creation
                         </p>
                       </div>
                     )}
@@ -737,6 +857,29 @@ export const AdminDashboard: React.FC = () => {
                   </select>
                 </div>
 
+                {/* Form Status */}
+                {memberForm.team ? (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                      <p className="text-sm text-green-700">
+                        Ready to create member for team: <span className="font-medium">{memberForm.team}</span>
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 text-yellow-600" />
+                      <p className="text-sm text-yellow-700">
+                        Please select or create a team to continue
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex space-x-3 pt-4">
                   <Button
                     type="button"
@@ -752,6 +895,7 @@ export const AdminDashboard: React.FC = () => {
                   <Button
                     type="submit"
                     isLoading={isLoading}
+                    disabled={!memberForm.team}
                     className="flex-1"
                   >
                     Create Member
@@ -870,11 +1014,14 @@ export const AdminDashboard: React.FC = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Select a team</option>
-                      {uniqueTeams.map((team) => (
-                        <option key={team} value={team}>
-                          {team} ({getTeamMembers(team).length} members)
-                        </option>
-                      ))}
+                                             {teams?.map((team) => {
+                         const teamMembers = getTeamMembers(team.name);
+                         return (
+                           <option key={team.id} value={team.name}>
+                             {team.name} ({teamMembers.length} members)
+                           </option>
+                         );
+                       })}
                     </select>
                   </div>
                 )}

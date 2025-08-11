@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useModal } from '../../contexts/ModalContext';
 import { useCollection } from '../../hooks/useFirestore';
 import { updateUser } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
@@ -21,6 +22,7 @@ import { User } from '../../types';
 
 export const Skills: React.FC = () => {
   const { user } = useAuth();
+  const { showNotification } = useModal();
   const { data: users } = useCollection<User>('users');
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,7 +54,11 @@ export const Skills: React.FC = () => {
 
     const newSkill = skillInput.trim();
     if ((user.skills || []).includes(newSkill)) {
-      alert('You already have this skill!');
+      showNotification({
+        title: 'Duplicate Skill',
+        message: 'You already have this skill!',
+        type: 'warning'
+      });
       return;
     }
 
@@ -65,7 +71,11 @@ export const Skills: React.FC = () => {
       setShowAddSkill(false);
     } catch (error) {
       console.error('Error adding skill:', error);
-      alert('Failed to add skill. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to add skill. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +91,11 @@ export const Skills: React.FC = () => {
       });
     } catch (error) {
       console.error('Error removing skill:', error);
-      alert('Failed to remove skill. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to remove skill. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }

@@ -377,3 +377,55 @@ export const deleteWikiDoc = async (docId: string) => {
   }
 };
 
+// Team Management Functions
+export const createTeam = async (teamData: Omit<Team, 'id' | 'createdAt'>) => {
+  try {
+    const teamToCreate = {
+      ...teamData,
+      createdAt: new Date()
+    };
+
+    const docRef = await addDoc(collection(db, 'teams'), teamToCreate);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating team:', error);
+    throw error;
+  }
+};
+
+export const getTeams = async (): Promise<Team[]> => {
+  try {
+    const q = query(collection(db, 'teams'), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date()
+    })) as Team[];
+  } catch (error) {
+    console.error('Error fetching teams:', error);
+    throw error;
+  }
+};
+
+export const updateTeam = async (teamId: string, updateData: Partial<Team>) => {
+  try {
+    await updateDoc(doc(db, 'teams', teamId), {
+      ...updateData,
+      updatedAt: new Date()
+    });
+  } catch (error) {
+    console.error('Error updating team:', error);
+    throw error;
+    }
+};
+
+export const deleteTeam = async (teamId: string) => {
+  try {
+    await deleteDoc(doc(db, 'teams', teamId));
+  } catch (error) {
+    console.error('Error deleting team:', error);
+    throw error;
+  }
+};
+

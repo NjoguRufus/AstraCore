@@ -1,4 +1,8 @@
 export interface User {
+  bio: string;
+  bio: string;
+  bio: string;
+  bio: string;
   uid: string;
   name: string;
   email: string;
@@ -84,6 +88,16 @@ export interface OnboardingStep {
   description: string;
   completed: boolean;
   required: boolean;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  createdAt: Date;
+  createdBy: string;
+  isActive: boolean;
 }
 
 export interface TermsAndConditions {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useModal } from '../../contexts/ModalContext';
 import { useCollection } from '../../hooks/useFirestore';
 import { useProjectNotifications } from '../../hooks/useProjectNotifications';
 import { Card } from '../../components/UI/Card';
@@ -27,6 +28,7 @@ import { Project, Announcement } from '../../types';
 
 export const MemberDashboard: React.FC = () => {
   const { user } = useAuth();
+  const { showNotification } = useModal();
   const { data: projects, loading: projectsLoading, error: projectsError } = useCollection<Project>('projects');
   const { data: announcements, loading: announcementsLoading, error: announcementsError } = useCollection<Announcement>('announcements');
   const { newProjects, hasNewNotifications, clearNotifications } = useProjectNotifications();
@@ -100,15 +102,27 @@ export const MemberDashboard: React.FC = () => {
             setUserContract(contractById);
             setShowContractModal(true);
           } else {
-            alert('Contract not found. Please contact an administrator.');
+            showNotification({
+              title: 'Contract Not Found',
+              message: 'Contract not found. Please contact an administrator.',
+              type: 'warning'
+            });
           }
         } else {
-          alert('No contract found. Please contact an administrator.');
+          showNotification({
+            title: 'No Contract',
+            message: 'No contract found. Please contact an administrator.',
+            type: 'warning'
+          });
         }
       }
     } catch (error) {
       console.error('Error fetching contract:', error);
-      alert('Error loading contract. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Error loading contract. Please try again.',
+        type: 'error'
+      });
     } finally {
       setLoadingContract(false);
     }

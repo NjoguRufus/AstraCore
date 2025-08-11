@@ -1,9 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ModalProvider, useModal } from './contexts/ModalContext';
 import { LoadingSpinner } from './components/UI/LoadingSpinner';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
+import ConfirmationModal from './components/UI/ConfirmationModal';
+import NotificationModal from './components/UI/NotificationModal';
 
 // Auth Pages
 import { RoleSelection } from './pages/Auth/RoleSelection';
@@ -240,12 +243,43 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-        <Toaster position="top-right" />
-      </Router>
+      <ModalProvider>
+        <Router>
+          <AppContent />
+          <Toaster position="top-right" />
+          <ModalComponents />
+        </Router>
+      </ModalProvider>
     </AuthProvider>
   );
 }
+
+// ModalComponents component that uses the modal context
+const ModalComponents: React.FC = () => {
+  const { confirmationModal, notificationModal, closeConfirmation, closeNotification } = useModal();
+  
+  return (
+    <>
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        confirmText={confirmationModal.confirmText}
+        cancelText={confirmationModal.cancelText}
+        type={confirmationModal.type}
+        onConfirm={confirmationModal.onConfirm || closeConfirmation}
+        onCancel={confirmationModal.onCancel || closeConfirmation}
+      />
+      <NotificationModal
+        isOpen={notificationModal.isOpen}
+        title={notificationModal.title}
+        message={notificationModal.message}
+        type={notificationModal.type}
+        duration={notificationModal.duration}
+        onClose={closeNotification}
+      />
+    </>
+  );
+};
 
 export default App;

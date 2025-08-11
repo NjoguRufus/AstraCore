@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCollection } from '../../hooks/useFirestore';
+import { useModal } from '../../contexts/ModalContext';
 import { createWikiDoc, updateWikiDoc, deleteWikiDoc } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
@@ -20,6 +21,7 @@ import { WikiDoc } from '../../types';
 
 export const WikiManagement: React.FC = () => {
   const { data: wikiDocs } = useCollection<WikiDoc>('wiki_docs');
+  const { showConfirmation, showNotification } = useModal();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState('all');
@@ -67,7 +69,11 @@ export const WikiManagement: React.FC = () => {
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error creating wiki doc:', error);
-      alert('Failed to create wiki document. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to create wiki document. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -93,20 +99,36 @@ export const WikiManagement: React.FC = () => {
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error updating wiki doc:', error);
-      alert('Failed to update wiki document. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to update wiki document. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDeleteDoc = async (docId: string) => {
-    if (!confirm('Are you sure you want to delete this wiki document?')) return;
+    const confirmed = await showConfirmation({
+      title: 'Delete Document',
+      message: 'Are you sure you want to delete this wiki document?',
+      type: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
 
     try {
       await deleteWikiDoc(docId);
     } catch (error) {
       console.error('Error deleting wiki doc:', error);
-      alert('Failed to delete wiki document. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to delete wiki document. Please try again.',
+        type: 'error'
+      });
     }
   };
 

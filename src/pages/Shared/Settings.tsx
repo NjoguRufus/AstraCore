@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useModal } from '../../contexts/ModalContext';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
@@ -16,6 +17,7 @@ import {
 
 export const Settings: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { showConfirmation, showNotification } = useModal();
   const [isLoading, setIsLoading] = useState(false);
   
   const [settings, setSettings] = useState({
@@ -42,17 +44,33 @@ export const Settings: React.FC = () => {
     try {
       // In a real app, you would save these settings to the database
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      alert('Settings saved successfully!');
+      showNotification({
+        title: 'Success',
+        message: 'Settings saved successfully!',
+        type: 'success'
+      });
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Failed to save settings. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to save settings. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSignOut = async () => {
-    if (confirm('Are you sure you want to sign out?')) {
+    const confirmed = await showConfirmation({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      type: 'warning',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel'
+    });
+    
+    if (confirmed) {
       await signOut();
     }
   };

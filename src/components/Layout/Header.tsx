@@ -1,11 +1,13 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProjectNotifications } from '../../hooks/useProjectNotifications';
+import { useModal } from '../../contexts/ModalContext';
 import { LogOut, User as UserIcon, Bell, Target } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { user, signOut } = useAuth();
   const { hasNewNotifications, newProjects } = useProjectNotifications();
+  const { showConfirmation } = useModal();
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -19,7 +21,15 @@ export const Header: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    if (confirm('Are you sure you want to sign out?')) {
+    const confirmed = await showConfirmation({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      type: 'warning',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel'
+    });
+    
+    if (confirmed) {
       await signOut();
     }
   };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCollection } from '../../hooks/useFirestore';
-import { updateUser, deleteUser, toggleUserStatus } from '../../services/firebaseService';
+import { useModal } from '../../contexts/ModalContext';
+import { updateUser, deleteUser, toggleUserStatus, getTeams } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
@@ -16,10 +17,11 @@ import {
   Power,
   PowerOff
 } from 'lucide-react';
-import { User } from '../../types';
+import { User, Team } from '../../types';
 
 export const MemberManagement: React.FC = () => {
   const { data: users = [], loading } = useCollection<User>('users');
+  const { showConfirmation, showNotification } = useModal();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -33,6 +35,7 @@ export const MemberManagement: React.FC = () => {
     team: '',
     isAdmin: false
   });
+  const [teams, setTeams] = useState<Team[]>([]);
 
   // Filter users with proper null checks
   const filteredUsers = users?.filter(user => {
@@ -46,6 +49,25 @@ export const MemberManagement: React.FC = () => {
 
   const activeMembers = users?.filter(u => u?.status === 'active') || [];
   const deactivatedMembers = users?.filter(u => u?.status === 'deactivated') || [];
+
+  // Load teams when component mounts
+  React.useEffect(() => {
+    const loadTeams = async () => {
+      try {
+        const teamsData = await getTeams();
+        setTeams(teamsData);
+      } catch (error) {
+        console.error('Error loading teams:', error);
+        showNotification({
+          title: 'Error',
+          message: 'Failed to load teams. Please try again.',
+          type: 'error'
+        });
+      }
+    };
+
+    loadTeams();
+  }, [showNotification]);
 
   const startEditMember = (member: User) => {
     if (!member) return;
@@ -74,10 +96,18 @@ export const MemberManagement: React.FC = () => {
 
       setEditingMember(null);
       setMemberForm({ name: '', role: 'dev', team: '', isAdmin: false });
-      alert('Member updated successfully!');
+      showNotification({
+        title: 'Success',
+        message: 'Member updated successfully!',
+        type: 'success'
+      });
     } catch (error) {
       console.error('Error updating member:', error);
-      alert('Failed to update member. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to update member. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -89,27 +119,55 @@ export const MemberManagement: React.FC = () => {
     const newStatus = currentStatus === 'active' ? 'deactivated' : 'active';
     const action = newStatus === 'active' ? 'activate' : 'deactivate';
     
-    if (!confirm(`Are you sure you want to ${action} this member?`)) return;
+    const confirmed = await showConfirmation({
+      title: 'Update Member Status',
+      message: `Are you sure you want to ${action} this member?`,
+      type: 'warning',
+      confirmText: action === 'activate' ? 'Activate' : 'Deactivate',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
 
     try {
       await toggleUserStatus(userId, newStatus);
     } catch (error) {
       console.error('Error toggling user status:', error);
-      alert('Failed to update user status. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to update user status. Please try again.',
+        type: 'error'
+      });
     }
   };
 
   const handleDeleteMember = async (uid: string) => {
     if (!uid) return;
 
-    if (!confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) return;
+    const confirmed = await showConfirmation({
+      title: 'Delete Member',
+      message: 'Are you sure you want to permanently delete this member? This action cannot be undone.',
+      type: 'danger',
+      confirmText: 'Delete Permanently',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
 
     try {
       await deleteUser(uid);
-      alert('Member deleted successfully!');
+      showNotification({
+        title: 'Success',
+        message: 'Member deleted successfully!',
+        type: 'success'
+      });
     } catch (error) {
       console.error('Error deleting member:', error);
-      alert('Failed to delete member. Please try again.');
+      showNotification({
+        title: 'Error',
+        message: 'Failed to delete member. Please try again.',
+        type: 'error'
+      });
     }
   };
 
@@ -319,13 +377,19 @@ export const MemberManagement: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Team
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={memberForm.team}
                     onChange={(e) => setMemberForm(prev => ({ ...prev, team: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
-                  />
+                  >
+                    <option value="">Select a team</option>
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.name}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex items-center space-x-2">
