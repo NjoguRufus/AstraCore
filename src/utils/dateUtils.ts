@@ -37,7 +37,7 @@ export const getDaysUntilDeadline = (deadline: any): string | null => {
     if (diffDays < 0) return 'Overdue';
     if (diffDays === 0) return 'Due today';
     if (diffDays === 1) return 'Due tomorrow';
-    return Due in  days;
+    return `Due in ${diffDays} days`;
   } catch (error) {
     return null;
   }

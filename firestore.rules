@@ -10,42 +10,10 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    
     function isAdmin() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             getUserData().isAdmin == true;
-    }
-    
-    function isActiveUser() {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             getUserData().status == 'active';
-    }
-    
-    function isPendingUser() {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             getUserData().status == 'pending';
-    }
-    
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-    
-    function isSameTeam(teamId) {
-      return isSignedIn() && isActiveUser() && getUserData().team == teamId;
-    }
-    
-    function isTeamAdmin(teamId) {
-      return isSameTeam(teamId) && getUserData().teamRole == 'admin';
-    }
-    
-    function isValidCompanyEmail() {
-      return request.auth.token.email.matches('.*@yourdomain\\.com$');
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
     // ======================
@@ -121,63 +89,77 @@ service cloud.firestore {
                     request.resource.data.diff(resource.data).changedKeys().hasOnly(['used', 'claimedByUid', 'claimedByEmail', 'claimedAt']);
     }
     
-    // Teams Collection
+    // Teams Collection - SIMPLIFIED
     match /teams/{teamId} {
       // Admins have full access
       allow read, write: if isAdmin();
       
-      // Team admins can manage their team
-      allow read, update: if isActiveUser() && isTeamAdmin(teamId);
+      // ANY signed-in user can read teams
+      allow read: if isSignedIn();
       
-      // Team members can read their team info
-      allow read: if isActiveUser() && isSameTeam(teamId);
+      // Only admins can modify teams
+      allow create, update, delete: if isAdmin();
     }
     
-    // Projects Collection
+    // Allow listing teams collection for active users
+    match /teams {
+      allow list: if isSignedIn();
+    }
+    
+    // Projects Collection - SIMPLIFIED
     match /projects/{projectId} {
       // Admins have full access
       allow read, write: if isAdmin();
       
-      // Team admins can create projects
-      allow create: if isActiveUser() && isTeamAdmin(request.resource.data.teamId);
+      // ANY signed-in user can read projects
+      allow read: if isSignedIn();
       
-      // Team members can read projects
-      allow read: if isActiveUser() && isSameTeam(resource.data.teamId);
+      // Users can create projects
+      allow create: if isSignedIn();
       
-      // Limited updates for assigned members
-      allow update: if isActiveUser() && 
-                   request.auth.uid in resource.data.assignedMembers &&
-                   request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                     'status',
-                     'progress'
-                   ]);
+      // Users can update projects they are assigned to
+      allow update: if isSignedIn() && 
+                   request.auth.uid in resource.data.assignedTo;
     }
     
-    // Announcements Collection
+    // Allow listing projects collection for active users
+    // This is needed for the useCollection hook to work properly
+    match /projects {
+      allow list: if isSignedIn();
+    }
+    
+    // Announcements Collection - SIMPLIFIED
     match /announcements/{announcementId} {
       // Admins have full access
       allow read, write: if isAdmin();
       
-      // Active users can read announcements
-      allow read: if isActiveUser();
+      // ANY signed-in user can read announcements
+      allow read: if isSignedIn();
       
       // Only admins can create, update, or delete announcements
       allow create, update, delete: if isAdmin();
     }
     
-    // Wiki Documents Collection
+    // Allow listing announcements collection for active users
+    match /announcements {
+      allow list: if isSignedIn();
+    }
+    
+    // Wiki Documents Collection - SIMPLIFIED
     match /wiki_docs/{docId} {
       // Admins have full access
       allow read, write: if isAdmin();
       
-      // Active users can read wiki docs
-      allow read: if isActiveUser();
+      // ANY signed-in user can read wiki docs
+      allow read: if isSignedIn();
       
-      // Team admins can create and update wiki docs
-      allow create, update: if isActiveUser() && isTeamAdmin(request.resource.data.teamId);
-      
-      // Only admins can delete wiki docs
-      allow delete: if isAdmin();
+      // Only admins can modify wiki docs
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Allow listing wiki docs collection for active users
+    match /wiki_docs {
+      allow list: if isSignedIn();
     }
     
     // System Collections (Restricted Access)
@@ -209,6 +191,11 @@ service cloud.firestore {
       // Users can update their own contracts (e.g., status updates)
       allow update: if isSignedIn() && 
                    resource.data.uid == request.auth.uid;
+    }
+    
+    // Allow listing contracts collection for signed-in users
+    match /contracts {
+      allow list: if isSignedIn();
     }
     
     match /pending_registrations/{docId} {

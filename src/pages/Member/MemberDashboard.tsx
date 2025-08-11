@@ -27,8 +27,8 @@ import { Project, Announcement } from '../../types';
 
 export const MemberDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { data: projects } = useCollection<Project>('projects');
-  const { data: announcements } = useCollection<Announcement>('announcements');
+  const { data: projects, loading: projectsLoading, error: projectsError } = useCollection<Project>('projects');
+  const { data: announcements, loading: announcementsLoading, error: announcementsError } = useCollection<Announcement>('announcements');
   const { newProjects, hasNewNotifications, clearNotifications } = useProjectNotifications();
   
   const [showNotifications, setShowNotifications] = useState(true);
@@ -47,6 +47,25 @@ export const MemberDashboard: React.FC = () => {
   const userProjects = projects.filter(project => 
     project.assignedTo.includes(user?.uid || '')
   );
+  
+  // Debug: Log project filtering
+  console.log('MemberDashboard - All projects:', projects.length);
+  console.log('MemberDashboard - User UID:', user?.uid);
+  console.log('MemberDashboard - User projects:', userProjects.length);
+  console.log('MemberDashboard - User projects details:', userProjects.map(p => ({ id: p.id, title: p.title, assignedTo: p.assignedTo })));
+  
+  // Debug: Log authentication state
+  console.log('MemberDashboard - User object:', user);
+  console.log('MemberDashboard - User status:', user?.status);
+  console.log('MemberDashboard - User isAdmin:', user?.isAdmin);
+  
+  // Log any errors
+  if (projectsError) {
+    console.error('Projects loading error:', projectsError);
+  }
+  if (announcementsError) {
+    console.error('Announcements loading error:', announcementsError);
+  }
 
   const completedProjects = userProjects.filter(p => p.status === 'completed');
   const inProgressProjects = userProjects.filter(p => p.status === 'in-progress');
@@ -122,6 +141,33 @@ export const MemberDashboard: React.FC = () => {
     <>
       <Layout>
       <div className="p-6 space-y-6">
+        {/* Error Display */}
+        {(projectsError || announcementsError) && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <h3 className="text-lg font-medium text-red-800 mb-2">Data Loading Errors</h3>
+            {projectsError && (
+              <p className="text-red-700 mb-2">
+                <strong>Projects Error:</strong> {projectsError.message}
+              </p>
+            )}
+            {announcementsError && (
+              <p className="text-red-700">
+                <strong>Announcements Error:</strong> {announcementsError.message}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Loading States */}
+        {(projectsLoading || announcementsLoading) && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-blue-700">
+              {projectsLoading && announcementsLoading ? 'Loading data...' : 
+               projectsLoading ? 'Loading projects...' : 'Loading announcements...'}
+            </p>
+          </div>
+        )}
+
         {/* Welcome Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
           <div className="flex items-center justify-between">
@@ -786,5 +832,6 @@ export const MemberDashboard: React.FC = () => {
     </>
   );
 };
+
 
 

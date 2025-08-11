@@ -90,7 +90,7 @@ export const Wiki: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{selectedDoc.title}</h1>
                 <div className="flex items-center space-x-4 text-sm text-gray-500">
                   <span><strong>Author:</strong> {selectedDoc.author}</span>
-                  <span><strong>Updated:</strong> {selectedDoc.updatedAt.toLocaleDateString()}</span>
+                  <span><strong>Updated:</strong> {selectedDoc.updatedAt ? selectedDoc.updatedAt.toLocaleDateString() : 'No date'}</span>
                   {selectedDoc.team && <span><strong>Team:</strong> {selectedDoc.team}</span>}
                 </div>
               </div>
@@ -265,7 +265,7 @@ export const Wiki: React.FC = () => {
 
                 <div className="text-sm text-gray-500">
                   <p><strong>Author:</strong> {doc.author}</p>
-                  <p><strong>Updated:</strong> {doc.updatedAt.toLocaleDateString()}</p>
+                  <p><strong>Updated:</strong> {doc.updatedAt ? doc.updatedAt.toLocaleDateString() : 'No date'}</p>
                 </div>
               </div>
             </Card>

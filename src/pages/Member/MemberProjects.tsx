@@ -15,6 +15,7 @@ import {
   Search
 } from 'lucide-react';
 import { Project } from '../../types';
+import { formatDate } from '../../utils/dateUtils';
 
 export const MemberProjects: React.FC = () => {
   const { user } = useAuth();
@@ -187,7 +188,7 @@ export const MemberProjects: React.FC = () => {
 
                 <div className="flex items-center space-x-1 text-sm text-gray-500">
                   <Calendar className="w-4 h-4" />
-                  <span>Due: {project.deadline.toLocaleDateString()}</span>
+                  <span>Due: {formatDate(project.deadline)}</span>
                 </div>
 
                 {/* Status Update Buttons */}

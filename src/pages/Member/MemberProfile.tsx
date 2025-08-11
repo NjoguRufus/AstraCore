@@ -198,7 +198,7 @@ export const MemberProfile: React.FC = () => {
               <div className="space-y-2 text-sm text-gray-600">
                 <p><strong>Employee ID:</strong> {user.employeeID}</p>
                 <p><strong>Team:</strong> {user.team}</p>
-                <p><strong>Joined:</strong> {user.createdAt.toLocaleDateString()}</p>
+                <p><strong>Joined:</strong> {user.createdAt ? user.createdAt.toLocaleDateString() : 'No date'}</p>
               </div>
             </div>
           </Card>

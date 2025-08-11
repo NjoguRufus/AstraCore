@@ -18,6 +18,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Project, User } from '../../types';
+import { formatDate, getDaysUntilDeadline, getDeadlineColor, toDate } from '../../utils/dateUtils';
 
 export const ProjectManagement: React.FC = () => {
   const { data: projects } = useCollection<Project>('projects');
@@ -121,7 +122,7 @@ export const ProjectManagement: React.FC = () => {
       assignedTo: project.assignedTo,
       team: project.team || '',
       status: project.status,
-      deadline: project.deadline.toISOString().split('T')[0]
+      deadline: toDate(project.deadline)?.toISOString().split('T')[0] || ''
     });
     setShowCreateModal(true);
   };
@@ -297,7 +298,9 @@ export const ProjectManagement: React.FC = () => {
 
                 <div className="flex items-center space-x-1 text-sm text-gray-500">
                   <Calendar className="w-4 h-4" />
-                  <span>Due: {project.deadline.toLocaleDateString()}</span>
+                  <span className={getDeadlineColor(project.deadline)}>
+                    Due: {formatDate(project.deadline)} ({getDaysUntilDeadline(project.deadline)})
+                  </span>
                 </div>
               </div>
             </Card>

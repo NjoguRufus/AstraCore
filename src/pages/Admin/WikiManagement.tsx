@@ -325,7 +325,7 @@ export const WikiManagement: React.FC = () => {
 
                 <div className="text-sm text-gray-500">
                   <p><strong>Author:</strong> {doc.author}</p>
-                  <p><strong>Updated:</strong> {doc.updatedAt.toLocaleDateString()}</p>
+                  <p><strong>Updated:</strong> {doc.updatedAt ? doc.updatedAt.toLocaleDateString() : 'No date'}</p>
                 </div>
               </div>
             </Card>

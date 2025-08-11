@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCollection } from '../../hooks/useFirestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -38,6 +38,8 @@ export const AdminDashboard: React.FC = () => {
   const { data: users } = useCollection<User>('users');
   const { data: projects } = useCollection<Project>('projects');
   const { data: announcements } = useCollection<Announcement>('announcements');
+  
+
 
   const [showCreateMember, setShowCreateMember] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -55,15 +57,20 @@ export const AdminDashboard: React.FC = () => {
     status: 'active' as 'active' | 'deactivated'
   });
 
+  const [showNewTeamInput, setShowNewTeamInput] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+
   const [projectForm, setProjectForm] = useState({
     title: '',
     description: '',
     assignedTo: [] as string[],
     assignedTeam: '',
-    team: '',
+    assignedType: '' as '' | 'individual' | 'team',
     status: 'upcoming' as 'upcoming' | 'in-progress' | 'completed',
     deadline: ''
   });
+
+
 
   const [announcementForm, setAnnouncementForm] = useState({
     title: '',
@@ -73,6 +80,54 @@ export const AdminDashboard: React.FC = () => {
 
   const activeMembers = users?.filter(u => u.status === 'active') || [];
   const deactivatedMembers = users?.filter(u => u.status === 'deactivated') || [];
+  
+
+  
+  // Get unique teams from active members
+  const uniqueTeams = Array.from(new Set(activeMembers.map(member => member.team)));
+  
+  // Helper function to get team members
+  const getTeamMembers = (teamName: string) => {
+    return activeMembers.filter(member => member.team === teamName);
+  };
+  
+  // Helper function to handle team assignment
+  const handleTeamAssignment = (teamName: string) => {
+    if (teamName) {
+      const teamMembers = getTeamMembers(teamName);
+      setProjectForm(prev => ({
+        ...prev,
+        assignedTeam: teamName,
+        assignedTo: teamMembers.map(member => member.uid)
+      }));
+    } else {
+      setProjectForm(prev => ({
+        ...prev,
+        assignedTeam: '',
+        assignedTo: []
+      }));
+    }
+  };
+  
+  // Helper function to reset member form
+  const resetMemberForm = () => {
+    setMemberForm({ name: '', role: 'dev', team: '', idCode: '', status: 'active' });
+    setShowNewTeamInput(false);
+    setNewTeamName('');
+  };
+  
+  // Helper function to reset project form
+  const resetProjectForm = () => {
+    setProjectForm({
+      title: '',
+      description: '',
+      assignedTo: [],
+      assignedTeam: '',
+      assignedType: '',
+      status: 'upcoming',
+      deadline: ''
+    });
+  };
 
   const generateRandomID = () => {
     return generateIdCode();
@@ -121,7 +176,7 @@ export const AdminDashboard: React.FC = () => {
         status: memberForm.status
       });
 
-      setMemberForm({ name: '', role: 'dev', team: '', idCode: '', status: 'active' });
+      resetMemberForm();
       setShowCreateMember(false);
       alert('Team member created successfully!');
     } catch (error) {
@@ -145,23 +200,73 @@ export const AdminDashboard: React.FC = () => {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectForm.title || !projectForm.description) return;
+    
+    // Validate that project has assignments
+    if (projectForm.assignedTo.length === 0 && !projectForm.assignedTeam) {
+      alert('Please assign the project to at least one team member or team.');
+      return;
+    }
+
+    // Validate deadline
+    if (!projectForm.deadline) {
+      alert('Please select a project deadline.');
+      return;
+    }
 
     setIsLoading(true);
     try {
-      await createProject({
-        ...projectForm,
+      // Clean the project data before sending to Firebase
+      const cleanProjectData: any = {
+        title: projectForm.title.trim(),
+        description: projectForm.description.trim(),
+        assignedTo: (projectForm.assignedTo || []).filter(id => id && typeof id === 'string' && id.length > 0),
+        status: projectForm.status,
         deadline: new Date(projectForm.deadline)
+      };
+
+      // Validate deadline date
+      if (isNaN(cleanProjectData.deadline.getTime())) {
+        alert('Invalid deadline date. Please select a valid date.');
+        return;
+      }
+
+      // Only add assignedTeam if it has a value
+      if (projectForm.assignedTeam && projectForm.assignedTeam.trim()) {
+        cleanProjectData.assignedTeam = projectForm.assignedTeam.trim();
+      }
+
+      // Remove any empty strings or undefined values, but preserve assignedTo array
+      Object.keys(cleanProjectData).forEach(key => {
+        if (cleanProjectData[key] === undefined || cleanProjectData[key] === '' || 
+            (key !== 'assignedTo' && Array.isArray(cleanProjectData[key]) && cleanProjectData[key].length === 0)) {
+          delete cleanProjectData[key];
+        }
       });
 
-      setProjectForm({
-        title: '',
-        description: '',
-        assignedTo: [],
-        assignedTeam: '',
-        team: '',
-        status: 'upcoming',
-        deadline: ''
-      });
+      // Final deep clean - remove any remaining undefined values
+      const finalCleanData = JSON.parse(JSON.stringify(cleanProjectData));
+
+      // Additional validation for assignedTo array
+      if (finalCleanData.assignedTo.length === 0) {
+        alert('Please assign the project to at least one team member.');
+        return;
+      }
+
+      // Validate that all assignedTo IDs are valid
+      const invalidIds = finalCleanData.assignedTo.filter((id: any) => !id || typeof id !== 'string' || id.length === 0);
+      if (invalidIds.length > 0) {
+        console.error('Invalid member IDs found:', invalidIds);
+        alert('Some team member assignments are invalid. Please try selecting members again.');
+        return;
+      }
+
+
+
+      const projectId = await createProject(finalCleanData);
+      console.log('Project created successfully with ID:', projectId);
+      console.log('Project data sent:', finalCleanData);
+
+      resetProjectForm();
       setShowCreateProject(false);
       alert('Project created successfully!');
     } catch (error) {
@@ -425,6 +530,57 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </Card>
 
+        {/* Team Management */}
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Team Management</h2>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {uniqueTeams.map((team) => {
+              const teamMembers = getTeamMembers(team);
+              const teamRoles = Array.from(new Set(teamMembers.map(m => m.role)));
+              
+              return (
+                <div key={team} className="p-4 border border-gray-200 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900">{team}</h3>
+                    <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                      {teamMembers.length} members
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">Roles:</span> {teamRoles.join(', ')}
+                    </div>
+                    
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">Members:</span>
+                    </div>
+                    <div className="space-y-1">
+                      {teamMembers.map((member) => (
+                        <div key={member.uid} className="flex items-center justify-between text-xs">
+                          <span className="text-gray-700">{member.name}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(member.role)}`}>
+                            {member.role}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {activeMembers.length === 0 && (
+              <p className="text-center text-gray-500 py-8 col-span-full">No teams found</p>
+            )}
+          </div>
+        </Card>
+
         {/* Create Member Modal */}
         {showCreateMember && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -490,14 +646,81 @@ export const AdminDashboard: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Team
                   </label>
-                  <input
-                    type="text"
-                    value={memberForm.team}
-                    onChange={(e) => setMemberForm(prev => ({ ...prev, team: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., Frontend Team, Security Team"
-                    required
-                  />
+                  <div className="space-y-2">
+                    {/* Existing Teams Dropdown */}
+                    <select
+                      value={showNewTeamInput ? '' : memberForm.team}
+                      onChange={(e) => {
+                        if (e.target.value === 'new') {
+                          setShowNewTeamInput(true);
+                          setMemberForm(prev => ({ ...prev, team: '' }));
+                        } else {
+                          setShowNewTeamInput(false);
+                          setMemberForm(prev => ({ ...prev, team: e.target.value }));
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required={!showNewTeamInput}
+                    >
+                      <option value="">Select a team</option>
+                      {uniqueTeams.map((team) => (
+                        <option key={team} value={team}>
+                          {team} ({getTeamMembers(team).length} members)
+                        </option>
+                      ))}
+                      <option value="new">+ Add New Team</option>
+                    </select>
+
+                    {/* New Team Input */}
+                    {showNewTeamInput && (
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          value={newTeamName}
+                          onChange={(e) => setNewTeamName(e.target.value)}
+                          placeholder="Enter new team name"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            if (newTeamName.trim()) {
+                              setMemberForm(prev => ({ ...prev, team: newTeamName.trim() }));
+                              setShowNewTeamInput(false);
+                              setNewTeamName('');
+                            }
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="px-3 py-2"
+                        >
+                          Add
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setShowNewTeamInput(false);
+                            setNewTeamName('');
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="px-3 py-2 text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Selected Team Display */}
+                    {memberForm.team && !showNewTeamInput && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                        <p className="text-sm text-blue-700">
+                          Selected Team: <span className="font-medium">{memberForm.team}</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -519,7 +742,7 @@ export const AdminDashboard: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setShowCreateMember(false);
-                      setMemberForm({ name: '', role: 'dev', team: '', idCode: '', status: 'active' });
+                      resetMemberForm();
                     }}
                     variant="outline"
                     className="flex-1"
@@ -576,11 +799,14 @@ export const AdminDashboard: React.FC = () => {
                     Assignment Type
                   </label>
                   <select
+                    value={projectForm.assignedType}
                     onChange={(e) => {
                       if (e.target.value === 'team') {
-                        setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '' }));
+                        setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '', assignedType: 'team' }));
+                      } else if (e.target.value === 'individual') {
+                        setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '', assignedType: 'individual' }));
                       } else {
-                        setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '' }));
+                        setProjectForm(prev => ({ ...prev, assignedTo: [], assignedTeam: '', assignedType: '' }));
                       }
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -590,6 +816,95 @@ export const AdminDashboard: React.FC = () => {
                     <option value="team">Assign to Team</option>
                   </select>
                 </div>
+
+                {/* Individual Member Selection */}
+                {projectForm.assignedType === 'individual' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Team Members
+                    </label>
+                    <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-2">
+                      {activeMembers.map((member) => (
+                        <label key={member.uid} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={projectForm.assignedTo.includes(member.uid)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setProjectForm(prev => ({
+                                  ...prev,
+                                  assignedTo: [...prev.assignedTo, member.uid]
+                                }));
+                              } else {
+                                setProjectForm(prev => ({
+                                  ...prev,
+                                  assignedTo: prev.assignedTo.filter(id => id !== member.uid)
+                                }));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">
+                            {member.name} ({member.role}) - {member.uid} - {member.team}
+                          </span>
+                        </label>
+                      ))}
+                      {activeMembers.length === 0 && (
+                        <p className="text-sm text-gray-500 text-center py-2">No active members found</p>
+                      )}
+                      
+
+                    </div>
+                  </div>
+                )}
+
+                {/* Team Selection */}
+                {projectForm.assignedType === 'team' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Team
+                    </label>
+                    <select
+                      value={projectForm.assignedTeam}
+                                             onChange={(e) => handleTeamAssignment(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select a team</option>
+                      {uniqueTeams.map((team) => (
+                        <option key={team} value={team}>
+                          {team} ({getTeamMembers(team).length} members)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Selected Assignment Summary */}
+                {(projectForm.assignedTo.length > 0 || projectForm.assignedTeam) && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-blue-900 mb-2">Assignment Summary:</h4>
+                    {projectForm.assignedType === 'team' && projectForm.assignedTeam ? (
+                      <p className="text-sm text-blue-700">
+                        Team: <span className="font-medium">{projectForm.assignedTeam}</span> 
+                        ({projectForm.assignedTo.length} members)
+                      </p>
+                    ) : projectForm.assignedType === 'individual' && projectForm.assignedTo.length > 0 ? (
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">Individual Members:</p>
+                        <div className="space-y-1">
+                          {projectForm.assignedTo.map((memberId) => {
+                            const member = activeMembers.find(m => m.uid === memberId);
+                            return member ? (
+                              <p key={memberId} className="text-sm text-blue-600">
+                                • {member.name} ({member.role})
+                              </p>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -608,15 +923,7 @@ export const AdminDashboard: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setShowCreateProject(false);
-                      setProjectForm({
-                        title: '',
-                        description: '',
-                        assignedTo: [],
-                        assignedTeam: '',
-                        team: '',
-                        status: 'upcoming',
-                        deadline: ''
-                      });
+                      resetProjectForm();
                     }}
                     variant="outline"
                     className="flex-1"

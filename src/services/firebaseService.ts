@@ -93,10 +93,37 @@ export const deleteUser = async (uid: string) => {
 // Projects
 export const createProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
   try {
-    const docRef = await addDoc(collection(db, 'projects'), {
+    // Validate required fields
+    if (!projectData.title || !projectData.description || !projectData.deadline) {
+      throw new Error('Missing required project fields');
+    }
+
+    // Validate assignedTo array
+    if (!projectData.assignedTo || projectData.assignedTo.length === 0) {
+      throw new Error('Project must be assigned to at least one team member');
+    }
+
+    // Ensure assignedTo is always an array and filter out invalid values
+    const cleanAssignedTo = (projectData.assignedTo || []).filter(id => 
+      id && typeof id === 'string' && id.length > 0
+    );
+
+    const projectToCreate = {
       ...projectData,
+      assignedTo: cleanAssignedTo,
       createdAt: new Date()
+    };
+
+    // Remove any undefined values
+    Object.keys(projectToCreate).forEach(key => {
+      if (projectToCreate[key] === undefined) {
+        delete projectToCreate[key];
+      }
     });
+
+
+
+    const docRef = await addDoc(collection(db, 'projects'), projectToCreate);
     return docRef.id;
   } catch (error) {
     console.error('Error creating project:', error);
@@ -349,3 +376,4 @@ export const deleteWikiDoc = async (docId: string) => {
     throw error;
   }
 };
+
