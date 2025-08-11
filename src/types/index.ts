@@ -9,24 +9,21 @@ export interface User {
   github?: string;
   linkedin?: string;
   phone?: string;
-  employeeID: string;
+  idCode: string;
   isAdmin?: boolean;
+  status: 'active' | 'deactivated';
   createdAt: Date;
-}
-
-export interface PendingMember {
-  employeeID: string;
-  name: string;
-  role: 'dev' | 'design' | 'cyber' | 'analyst';
-  team: string;
-  createdAt: Date;
+  onboardingCompleted?: boolean;
+  contractSigned?: boolean;
+  contractId?: string;
 }
 
 export interface Project {
   id: string;
   title: string;
   description: string;
-  assignedTo: string[];
+  assignedTo: string[]; // UIDs of assigned members
+  assignedTeam?: string; // Team name if assigned to entire team
   team?: string;
   status: 'upcoming' | 'in-progress' | 'completed';
   deadline: Date;
@@ -42,11 +39,23 @@ export interface Announcement {
 }
 
 export interface Contract {
+  id: string;
   uid: string;
-  employeeID: string;
+  idCode: string;
   contractURL: string;
-  signedAt: Date;
+  signedAt: Date | null;
   signatureData: string;
+  memberSignatureUrl?: string;
+  selfieImageUrl?: string;
+  termsAccepted: boolean;
+  termsAcceptedAt: Date;
+  status: 'pending' | 'signed' | 'completed';
+  memberName: string;
+  memberRole: string;
+  memberEmail: string;
+  contractVersion: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface WikiDoc {
@@ -67,4 +76,20 @@ export interface Badge {
   description: string;
   icon: string;
   color: string;
+}
+
+export interface OnboardingStep {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  required: boolean;
+}
+
+export interface TermsAndConditions {
+  id: string;
+  version: string;
+  content: string;
+  effectiveDate: Date;
+  isActive: boolean;
 }

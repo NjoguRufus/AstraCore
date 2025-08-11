@@ -1,0 +1,208 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ======================
+    // Helper Functions
+    // ======================
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().isAdmin == true;
+    }
+    
+    function isActiveUser() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().status == 'active';
+    }
+    
+    function isPendingUser() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().status == 'pending';
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isSameTeam(teamId) {
+      return isSignedIn() && isActiveUser() && getUserData().team == teamId;
+    }
+    
+    function isTeamAdmin(teamId) {
+      return isSameTeam(teamId) && getUserData().teamRole == 'admin';
+    }
+    
+    function isValidCompanyEmail() {
+      return request.auth.token.email.matches('.*@yourdomain\\.com$');
+    }
+    
+    // ======================
+    // Core Collections Rules
+    // ======================
+    
+    // Users Collection - Simplified for Google Sign-In
+    match /users/{userId} {
+      // Allow authenticated users to read either:
+      // - their own profile by UID, or
+      // - any profile whose email matches their signed-in Google email, or
+      // - an unclaimed pre-seeded record (uid is not yet set/empty) to support first-time claim by ID code
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId ||
+        resource.data.email == request.auth.token.email ||
+        resource.data.uid == null || resource.data.uid == ''
+      );
+      
+      // Allow any authenticated user to create their own profile during ID code claim
+      // This supports the ID code claim flow where a user creates their profile after Google sign-in
+      // Temporarily more permissive to debug permission issues
+      allow create: if isSignedIn();
+      
+      // Allow users to update their own profile OR perform a safe one-time claim on a pre-seeded record.
+      // Claim cases supported:
+      // 1) Both `email` and `uid` are unset: allow setting both to caller's values
+      // 2) `email` is already set to caller's email and `uid` is unset: allow setting only `uid`
+      // 3) New user creation during ID code claim (document doesn't exist yet)
+      allow update: if isSignedIn() && (
+        // Caller owns the profile by UID
+        request.auth.uid == userId ||
+        // Claiming a pre-seeded record
+        (
+          (resource.data.uid == null || resource.data.uid == '') && (
+            // Case 1: set both uid and email when both are unset
+            (
+              (resource.data.email == null || resource.data.email == '') &&
+              request.resource.data.diff(resource.data).changedKeys().hasOnly(['uid', 'email']) &&
+              request.resource.data.uid == request.auth.uid &&
+              request.resource.data.email == request.auth.token.email
+            ) ||
+            // Case 2: set only uid when email already matches caller
+            (
+              resource.data.email == request.auth.token.email &&
+              request.resource.data.diff(resource.data).changedKeys().hasOnly(['uid']) &&
+              request.resource.data.uid == request.auth.uid
+            )
+          )
+        )
+      );
+      
+      // Allow admin to manage all users
+      allow read, write: if isAdmin();
+    }
+    
+    // ID Code Verification Collection
+    match /id_codes/{codeId} {
+      // Admins can manage all codes
+      allow read, write: if isAdmin();
+
+      // Allow unauthenticated users to verify a specific code by ID
+      // (Only document GETs; listing the collection still requires admin)
+      allow get: if true;
+
+      // Allow a one-time client-side claim of an unused code
+      // Only the following fields may be updated: used, claimedByUid, claimedByEmail, claimedAt
+      // Must set used=true and claim must match the caller's identity
+      allow update: if isSignedIn() &&
+                    (resource.data.used == false || resource.data.used == null) &&
+                    request.resource.data.used == true &&
+                    request.resource.data.claimedByUid == request.auth.uid &&
+                    request.resource.data.claimedByEmail == request.auth.token.email &&
+                    request.resource.data.diff(resource.data).changedKeys().hasOnly(['used', 'claimedByUid', 'claimedByEmail', 'claimedAt']);
+    }
+    
+    // Teams Collection
+    match /teams/{teamId} {
+      // Admins have full access
+      allow read, write: if isAdmin();
+      
+      // Team admins can manage their team
+      allow read, update: if isActiveUser() && isTeamAdmin(teamId);
+      
+      // Team members can read their team info
+      allow read: if isActiveUser() && isSameTeam(teamId);
+    }
+    
+    // Projects Collection
+    match /projects/{projectId} {
+      // Admins have full access
+      allow read, write: if isAdmin();
+      
+      // Team admins can create projects
+      allow create: if isActiveUser() && isTeamAdmin(request.resource.data.teamId);
+      
+      // Team members can read projects
+      allow read: if isActiveUser() && isSameTeam(resource.data.teamId);
+      
+      // Limited updates for assigned members
+      allow update: if isActiveUser() && 
+                   request.auth.uid in resource.data.assignedMembers &&
+                   request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                     'status',
+                     'progress'
+                   ]);
+    }
+    
+    // System Collections (Restricted Access)
+    match /system_settings/{settingId} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if false; // Only via Cloud Functions
+    }
+    
+    // ======================
+    // Onboarding Flow Support
+    // ======================
+    
+    // Contracts Collection - For storing signed contracts
+    match /contracts/{contractId} {
+      // Admins can read and manage all contracts
+      allow read, write: if isAdmin();
+      
+      // Users can read their own contracts
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+      
+      // Users can create their own contracts during onboarding
+      allow create: if isSignedIn() && 
+                   request.resource.data.uid == request.auth.uid;
+      
+      // Users can update their own contracts (e.g., status updates)
+      allow update: if isSignedIn() && 
+                   resource.data.uid == request.auth.uid;
+    }
+    
+    match /pending_registrations/{docId} {
+      // Anyone can create a pending registration
+      allow create: if true;
+      
+      // Admins can read all pending
+      allow read: if isAdmin();
+      
+      // Users can read their own pending registration
+      allow read: if isSignedIn() && resource.data.email == request.auth.token.email;
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+    
+    // ======================
+    // Default Deny Rule
+    // ======================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

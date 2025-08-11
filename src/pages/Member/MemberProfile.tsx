@@ -1,0 +1,374 @@
+import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { updateUser } from '../../services/firebaseService';
+import { uploadToCloudinary } from '../../config/cloudinary';
+import { generateIDCard } from '../../utils/pdf';
+import { Card } from '../../components/UI/Card';
+import { Button } from '../../components/UI/Button';
+import { Layout } from '../../components/Layout/Layout';
+import { 
+  User as UserIcon, 
+  Camera, 
+  Github, 
+  Linkedin, 
+  Phone, 
+  Mail,
+  Download,
+  Edit,
+  Save,
+  X
+} from 'lucide-react';
+
+export const MemberProfile: React.FC = () => {
+  const { user } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  
+  const [profileData, setProfileData] = useState({
+    name: user?.name || '',
+    github: user?.github || '',
+    linkedin: user?.linkedin || '',
+    phone: user?.phone || '',
+    skills: user?.skills || []
+  });
+
+  const [skillInput, setSkillInput] = useState('');
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploadingPhoto(true);
+    try {
+      const photoURL = await uploadToCloudinary(file);
+      await updateUser(user.uid, { photoURL });
+      // The user object will be updated automatically via the auth context
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      alert('Failed to upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      await updateUser(user.uid, profileData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDownloadID = () => {
+    if (user) {
+      generateIDCard(user);
+    }
+  };
+
+  const addSkill = () => {
+    if (skillInput.trim() && !profileData.skills.includes(skillInput.trim())) {
+      setProfileData(prev => ({
+        ...prev,
+        skills: [...prev.skills, skillInput.trim()]
+      }));
+      setSkillInput('');
+    }
+  };
+
+  const removeSkill = (skillToRemove: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      skills: prev.skills.filter(skill => skill !== skillToRemove)
+    }));
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'bg-red-100 text-red-800 border-red-200';
+      case 'dev': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'design': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'cyber': return 'bg-green-100 text-green-800 border-green-200';
+      case 'analyst': return 'bg-orange-100 text-orange-800 border-orange-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  if (!user) return null;
+
+  return (
+    <Layout>
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
+            <p className="text-gray-600 mt-1">Manage your personal information and settings</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <Button
+              onClick={handleDownloadID}
+              variant="outline"
+              className="flex items-center space-x-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download ID Card</span>
+            </Button>
+            {!isEditing ? (
+              <Button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center space-x-2"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Edit Profile</span>
+              </Button>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button
+                  onClick={() => setIsEditing(false)}
+                  variant="outline"
+                  className="flex items-center space-x-2"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Cancel</span>
+                </Button>
+                <Button
+                  onClick={handleSaveProfile}
+                  isLoading={isLoading}
+                  className="flex items-center space-x-2"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Changes</span>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Profile Card */}
+          <Card className="lg:col-span-1">
+            <div className="text-center space-y-4">
+              <div className="relative inline-block">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.name}
+                    className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg mx-auto"
+                  />
+                ) : (
+                  <div className="w-32 h-32 bg-gray-200 rounded-full flex items-center justify-center border-4 border-white shadow-lg mx-auto">
+                    <UserIcon className="w-16 h-16 text-gray-400" />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={uploadingPhoto}
+                />
+                <div className="absolute bottom-0 right-0 bg-blue-600 rounded-full p-2 shadow-lg">
+                  <Camera className="w-4 h-4 text-white" />
+                </div>
+                {uploadingPhoto && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
+                <p className="text-gray-600">{user.email}</p>
+                <div className="flex justify-center mt-2">
+                  <span className={`px-3 py-1 text-sm font-medium rounded-full border ${getRoleColor(user.role)}`}>
+                    {user.role}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-sm text-gray-600">
+                <p><strong>Employee ID:</strong> {user.employeeID}</p>
+                <p><strong>Team:</strong> {user.team}</p>
+                <p><strong>Joined:</strong> {user.createdAt.toLocaleDateString()}</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Profile Details */}
+          <Card className="lg:col-span-2">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Profile Information</h3>
+            
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name
+                </label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={profileData.name}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <p className="text-gray-900">{user.name}</p>
+                )}
+              </div>
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Mail className="w-4 h-4 inline mr-1" />
+                    Email
+                  </label>
+                  <p className="text-gray-900">{user.email}</p>
+                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Phone className="w-4 h-4 inline mr-1" />
+                    Phone
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="tel"
+                      value={profileData.phone}
+                      onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter phone number"
+                    />
+                  ) : (
+                    <p className="text-gray-900">{user.phone || 'Not provided'}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Social Links */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Github className="w-4 h-4 inline mr-1" />
+                    GitHub
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="url"
+                      value={profileData.github}
+                      onChange={(e) => setProfileData(prev => ({ ...prev, github: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://github.com/username"
+                    />
+                  ) : (
+                    <p className="text-gray-900">
+                      {user.github ? (
+                        <a href={user.github} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          {user.github}
+                        </a>
+                      ) : (
+                        'Not provided'
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Linkedin className="w-4 h-4 inline mr-1" />
+                    LinkedIn
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="url"
+                      value={profileData.linkedin}
+                      onChange={(e) => setProfileData(prev => ({ ...prev, linkedin: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://linkedin.com/in/username"
+                    />
+                  ) : (
+                    <p className="text-gray-900">
+                      {user.linkedin ? (
+                        <a href={user.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          {user.linkedin}
+                        </a>
+                      ) : (
+                        'Not provided'
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Skills */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Skills & Technologies
+                </label>
+                {isEditing ? (
+                  <div>
+                    <div className="flex space-x-2 mb-3">
+                      <input
+                        type="text"
+                        placeholder="Add a skill"
+                        value={skillInput}
+                        onChange={(e) => setSkillInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <Button type="button" onClick={addSkill} variant="outline">
+                        Add
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {profileData.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                        >
+                          {skill}
+                          <button
+                            type="button"
+                            onClick={() => removeSkill(skill)}
+                            className="ml-2 text-blue-600 hover:text-blue-800"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {user.skills.length > 0 ? (
+                      user.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                        >
+                          {skill}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-gray-500">No skills added yet</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </Layout>
+  );
+};

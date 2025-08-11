@@ -1,19 +1,11 @@
 import React from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { signOut } from 'firebase/auth';
-import { auth } from '../../config/firebase';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useProjectNotifications } from '../../hooks/useProjectNotifications';
+import { LogOut, User as UserIcon, Bell, Target } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { user } = useAuth();
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
+  const { user, signOut } = useAuth();
+  const { hasNewNotifications, newProjects } = useProjectNotifications();
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -26,21 +18,42 @@ export const Header: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    if (confirm('Are you sure you want to sign out?')) {
+      await signOut();
+    }
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">A</span>
-              </div>
+              <img
+                src="https://imgur.com/T7mH4Ly.png"
+                alt="Astracore Logo"
+                className="w-8 h-8 object-contain"
+              />
               <span className="text-xl font-bold text-gray-900">Astracore</span>
             </div>
           </div>
           
           {user && (
             <div className="flex items-center space-x-4">
+              {/* Project Notifications */}
+              {user.role !== 'admin' && hasNewNotifications && (
+                <div className="relative">
+                  <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                    <Bell className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">
+                      {newProjects.length} new project{newProjects.length > 1 ? 's' : ''}
+                    </span>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-center space-x-3">
                 {user.photoURL ? (
                   <img

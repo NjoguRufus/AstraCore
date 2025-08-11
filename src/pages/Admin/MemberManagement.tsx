@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { v4 as uuidv4 } from 'uuid';
-import { db } from '../../config/firebase';
 import { useCollection } from '../../hooks/useFirestore';
+import { updateUser, deleteUser, toggleUserStatus } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
@@ -14,58 +12,60 @@ import {
   Filter,
   UserCheck,
   UserX,
-  Crown
+  Crown,
+  Power,
+  PowerOff
 } from 'lucide-react';
-import { User, PendingMember } from '../../types';
+import { User } from '../../types';
 
 export const MemberManagement: React.FC = () => {
-  const { data: activeMembers } = useCollection<User>('active_members');
-  const { data: pendingMembers } = useCollection<PendingMember>('pending_members');
+  const { data: users = [], loading } = useCollection<User>('users');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [editingMember, setEditingMember] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-
+  
   const [memberForm, setMemberForm] = useState({
     name: '',
-    email: '',
-    role: 'admin' as 'admin' | 'manager' | 'editor' | 'viewer',
+    role: 'dev' as 'dev' | 'design' | 'cyber' | 'analyst' | 'admin',
+    team: '',
+    isAdmin: false
   });
 
-  const filteredActiveMembers = activeMembers.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.employeeID.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || member.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
+  // Filter users with proper null checks
+  const filteredUsers = users?.filter(user => {
+    const matchesSearch = user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user?.idCode?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'all' || user?.role === roleFilter;
+    const matchesStatus = statusFilter === 'all' || user?.status === statusFilter;
+    return matchesSearch && matchesRole && matchesStatus;
+  }) || [];
 
-  const filteredPendingMembers = pendingMembers.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.employeeID.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || member.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
+  const activeMembers = users?.filter(u => u?.status === 'active') || [];
+  const deactivatedMembers = users?.filter(u => u?.status === 'deactivated') || [];
 
   const startEditMember = (member: User) => {
+    if (!member) return;
+    
     setEditingMember(member);
     setMemberForm({
-      name: member.name,
-      role: member.role,
-      team: member.team,
+      name: member.name || '',
+      role: member.role || 'dev',
+      team: member.team || '',
       isAdmin: member.isAdmin || false
     });
   };
 
   const handleUpdateMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingMember) return;
+    if (!editingMember?.uid) return;
 
     setIsLoading(true);
     try {
-      await updateDoc(doc(db, 'active_members', editingMember.uid), {
+      await updateUser(editingMember.uid, {
         name: memberForm.name,
         role: memberForm.role,
         team: memberForm.team,
@@ -83,30 +83,33 @@ export const MemberManagement: React.FC = () => {
     }
   };
 
-  const handleDeleteActiveMember = async (uid: string) => {
-    if (!confirm('Are you sure you want to delete this active member? This action cannot be undone.')) return;
+  const handleToggleStatus = async (userId: string, currentStatus: string) => {
+    if (!userId) return;
+    
+    const newStatus = currentStatus === 'active' ? 'deactivated' : 'active';
+    const action = newStatus === 'active' ? 'activate' : 'deactivate';
+    
+    if (!confirm(`Are you sure you want to ${action} this member?`)) return;
 
     try {
-      await deleteDoc(doc(db, 'active_members', uid));
+      await toggleUserStatus(userId, newStatus);
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      alert('Failed to update user status. Please try again.');
+    }
+  };
+
+  const handleDeleteMember = async (uid: string) => {
+    if (!uid) return;
+
+    if (!confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) return;
+
+    try {
+      await deleteUser(uid);
       alert('Member deleted successfully!');
     } catch (error) {
       console.error('Error deleting member:', error);
       alert('Failed to delete member. Please try again.');
-    }
-  };
-
-  const handleDeletePendingMember = async (employeeID: string) => {
-    if (!confirm('Are you sure you want to delete this pending member?')) return;
-
-    try {
-      const memberDoc = pendingMembers.find(m => m.employeeID === employeeID);
-      if (memberDoc) {
-        await deleteDoc(doc(db, 'pending_members', (memberDoc as any).id));
-        alert('Pending member deleted successfully!');
-      }
-    } catch (error) {
-      console.error('Error deleting pending member:', error);
-      alert('Failed to delete pending member. Please try again.');
     }
   };
 
@@ -121,28 +124,15 @@ export const MemberManagement: React.FC = () => {
     }
   };
 
-  // Create Member Handler
-  const handleCreateMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const uid = uuidv4();
-      await setDoc(doc(db, 'active_members', uid), {
-        name: memberForm.name,
-        email: memberForm.email,
-        role: memberForm.role,
-        createdAt: serverTimestamp(),
-      });
-      setShowCreateModal(false);
-      setMemberForm({ name: '', email: '', role: 'admin' });
-      alert('Member created successfully!');
-    } catch (error) {
-      console.error('Error creating member:', error);
-      alert('Failed to create member. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  if (loading) {
+    return (
+      <Layout>
+        <div className="p-6 flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -151,16 +141,15 @@ export const MemberManagement: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Member Management</h1>
-            <p className="text-gray-600 mt-1">Manage active and pending team members</p>
+            <p className="text-gray-600 mt-1">Manage active and deactivated team members</p>
           </div>
           <div className="flex items-center space-x-4">
             <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
               {activeMembers.length} Active
             </span>
-            <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
-              {pendingMembers.length} Pending
+            <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+              {deactivatedMembers.length} Deactivated
             </span>
-            <Button onClick={() => setShowCreateModal(true)} className="ml-4">+ Create Member</Button>
           </div>
         </div>
 
@@ -172,7 +161,7 @@ export const MemberManagement: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Search by name, email, or employee ID..."
+                  placeholder="Search by name, email, or ID code..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -181,6 +170,15 @@ export const MemberManagement: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="deactivated">Deactivated</option>
+              </select>
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
@@ -197,22 +195,18 @@ export const MemberManagement: React.FC = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Active Members */}
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                <UserCheck className="w-5 h-5 text-green-600" />
-                <span>Active Members</span>
-              </h2>
-              <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">
-                {filteredActiveMembers.length}
-              </span>
-            </div>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {filteredActiveMembers.map((member) => (
-                <div key={member.uid} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center space-x-3">
+        {/* Members List */}
+        <Card>
+          <div className="space-y-4">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map((member) => (
+                <div 
+                  key={member.uid || member.idCode || member.email} 
+                  className={`flex items-center justify-between p-4 rounded-lg border ${
+                    member.status === 'active' ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-300 opacity-75'
+                  }`}
+                >
+                  <div className="flex items-center space-x-4">
                     {member.photoURL ? (
                       <img
                         src={member.photoURL}
@@ -230,9 +224,16 @@ export const MemberManagement: React.FC = () => {
                         {member.isAdmin && (
                           <Crown className="w-4 h-4 text-yellow-500" />
                         )}
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          member.status === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {member.status}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600">{member.email}</p>
-                      <p className="text-xs text-gray-500">ID: {member.employeeID}</p>
+                      <p className="text-xs text-gray-500">ID: {member.idCode}</p>
                       <div className="flex items-center space-x-2 mt-1">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getRoleColor(member.role)}`}>
                           {member.role}
@@ -250,52 +251,15 @@ export const MemberManagement: React.FC = () => {
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button
-                      onClick={() => handleDeleteActiveMember(member.uid)}
+                      onClick={() => handleToggleStatus(member.uid, member.status)}
                       variant="ghost"
                       size="sm"
-                      className="text-red-600 hover:text-red-700"
+                      className={member.status === 'active' ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {member.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                     </Button>
-                  </div>
-                </div>
-              ))}
-              {filteredActiveMembers.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No active members found</p>
-              )}
-            </div>
-          </Card>
-
-          {/* Pending Members */}
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                <UserX className="w-5 h-5 text-orange-600" />
-                <span>Pending Members</span>
-              </h2>
-              <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm">
-                {filteredPendingMembers.length}
-              </span>
-            </div>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {filteredPendingMembers.map((member) => (
-                <div key={member.employeeID} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{member.name}</h3>
-                    <p className="text-sm text-gray-600">ID: {member.employeeID}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getRoleColor(member.role)}`}>
-                        {member.role}
-                      </span>
-                      <span className="text-xs text-gray-500">{member.team}</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Created: {member.createdAt?.toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
                     <Button
-                      onClick={() => handleDeletePendingMember(member.employeeID)}
+                      onClick={() => handleDeleteMember(member.uid)}
                       variant="ghost"
                       size="sm"
                       className="text-red-600 hover:text-red-700"
@@ -304,13 +268,16 @@ export const MemberManagement: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-              ))}
-              {filteredPendingMembers.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No pending members found</p>
-              )}
-            </div>
-          </Card>
-        </div>
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No members found</h3>
+                <p className="text-gray-500">No members match your current search and filters.</p>
+              </div>
+            )}
+          </div>
+        </Card>
 
         {/* Edit Member Modal */}
         {editingMember && (
@@ -399,75 +366,6 @@ export const MemberManagement: React.FC = () => {
             </div>
           </div>
         )}
-      {/* Create Member Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Create Member</h2>
-            <form onSubmit={handleCreateMember} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={memberForm.name}
-                  onChange={(e) => setMemberForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={memberForm.email}
-                  onChange={(e) => setMemberForm(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role
-                </label>
-                <select
-                  value={memberForm.role}
-                  onChange={(e) => setMemberForm(prev => ({ ...prev, role: e.target.value as any }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="manager">Manager</option>
-                  <option value="editor">Editor</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-              </div>
-              <div className="flex space-x-3 pt-4">
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setMemberForm({ name: '', email: '', role: 'admin' });
-                  }}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  isLoading={isLoading}
-                  className="flex-1"
-                >
-                  Create Member
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       </div>
     </Layout>
   );

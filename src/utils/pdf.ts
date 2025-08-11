@@ -31,7 +31,7 @@ export const generateIDCard = (user: User): void => {
   // Role and ID
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`${user.role.toUpperCase()} • ID: ${user.employeeID}`, 42.5, 32, { align: 'center' });
+  pdf.text(`${user.role.toUpperCase()} • ID: ${user.idCode}`, 42.5, 32, { align: 'center' });
 
   // Team
   pdf.text(user.team.toUpperCase(), 42.5, 38, { align: 'center' });
@@ -62,7 +62,7 @@ export const generateContract = (user: User, signatureDataURL?: string): jsPDF =
     '',
     'EMPLOYEE INFORMATION:',
     `Name: ${user.name}`,
-    `Employee ID: ${user.employeeID}`,
+    `ID Code: ${user.idCode}`,
     `Role: ${user.role}`,
     `Team: ${user.team}`,
     `Email: ${user.email}`,
