@@ -326,7 +326,7 @@ export function generateContractHTML(contract: Contract): string {
     }
   };
 
-  // Generate HTML content for viewing in browser
+  // Generate HTML content for viewing in browser with EXACT styling from member dashboard
   const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -343,46 +343,75 @@ export function generateContractHTML(contract: Contract): string {
         .page {
             width: 210mm;
             min-height: 297mm;
-            margin: auto;
+            margin: 0;
             background: white url('/images/contract.jpg') no-repeat top center;
             background-size: cover;
             position: relative;
             padding: 40mm 25mm 20mm 25mm;
             box-sizing: border-box;
-        }
-        h1, h2 {
-            color: #003366;
-            margin-bottom: 5px;
+            font-family: Arial, sans-serif;
         }
         h1 {
+            color: white;
             font-size: 22px;
             text-align: center;
             text-transform: uppercase;
-            color: white;
+            margin-bottom: 20px;
+            margin-top: 0;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            font-weight: bold;
         }
         h2 {
+            color: #003366;
             font-size: 16px;
             border-bottom: 2px solid #003366;
             padding-bottom: 3px;
             margin-top: 20px;
+            margin-bottom: 5px;
+            font-weight: bold;
         }
-        p, li {
+        p {
             font-size: 14px;
             line-height: 1.5;
             margin: 4px 0;
+            color: #000;
         }
         ol {
             padding-left: 18px;
+            margin: 10px 0;
+            counter-reset: item;
+            list-style: none;
+        }
+        ol li {
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 4px 0;
+            color: #000;
+            counter-increment: item;
+            position: relative;
+        }
+        ol li::before {
+            content: counter(item) ". ";
+            font-weight: bold;
+            color: #003366;
+            position: absolute;
+            left: -18px;
+            top: 0;
         }
         .signatures {
             display: flex;
             justify-content: space-between;
             margin-top: 25px;
+            gap: 20px;
         }
         .signature-block {
             width: 45%;
             text-align: center;
+        }
+        .signature-block p {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #003366;
         }
         .signature-block img {
             max-width: 100%;
@@ -391,18 +420,23 @@ export function generateContractHTML(contract: Contract): string {
             border: 1px solid #ddd;
             border-radius: 4px;
         }
-        .selfie-image {
+        .signature-block .selfie-image {
             width: 150px !important;
             height: 150px !important;
             border-radius: 50% !important;
             object-fit: cover !important;
             border: 3px solid #3b82f6 !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-left: 12.7mm !important; /* Push half an inch to the right (12.7mm ≈ 0.5 inch) */
+            margin-left: 12.7mm !important;
         }
         .meta {
             margin-top: 15px;
             font-size: 14px;
+            color: #000;
+        }
+        .meta p {
+            margin: 4px 0;
+            color: #000;
         }
         .footer {
             position: absolute;
@@ -481,17 +515,17 @@ export function generateContractHTML(contract: Contract): string {
   return html;
 }
 
-        // New function: Generate PDF by taking screenshot of HTML
+        // New function: Generate PDF by taking screenshot of HTML with EXACT visual replication
         export async function generateContractPDFFromScreenshot(contract: Contract): Promise<void> {
           try {
             // Show loading toast
             const { toast } = await import('react-hot-toast');
             toast.loading('Generating PDF from HTML...');
             
-            // Generate the HTML content
+            // Generate the HTML content with exact styling
             const htmlContent = generateContractHTML(contract);
             
-            // Create a temporary container with proper sizing
+            // Create a temporary container with proper sizing and styling
             const tempContainer = document.createElement('div');
             tempContainer.style.position = 'absolute';
             tempContainer.style.left = '-9999px';
@@ -499,12 +533,13 @@ export function generateContractHTML(contract: Contract): string {
             tempContainer.style.width = '210mm';
             tempContainer.style.minHeight = '297mm';
             tempContainer.style.overflow = 'visible';
+            tempContainer.style.backgroundColor = '#ffffff';
             tempContainer.innerHTML = htmlContent;
             
             // Add to DOM temporarily
             document.body.appendChild(tempContainer);
             
-            // Wait for images to load with timeout for faster processing
+            // Wait for images to load and styles to be applied
             const images = tempContainer.querySelectorAll('img');
             if (images.length > 0) {
               await Promise.race([
@@ -518,37 +553,36 @@ export function generateContractHTML(contract: Contract): string {
                     }
                   });
                 })),
-                new Promise(resolve => setTimeout(resolve, 2000)) // 2 second timeout
+                new Promise(resolve => setTimeout(resolve, 3000)) // 3 second timeout for better image loading
               ]);
             }
+            
+            // Additional wait for styles to be fully applied
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             // Import html2canvas dynamically
             const html2canvas = (await import('html2canvas')).default;
             
-            // Get the actual content dimensions
-            const containerRect = tempContainer.getBoundingClientRect();
-            const contentHeight = tempContainer.scrollHeight;
-            const contentWidth = tempContainer.scrollWidth;
-            
-            // Take screenshot with optimized settings
+            // Take screenshot with high-quality settings for exact replication
             const canvas = await html2canvas(tempContainer, {
-              width: contentWidth,
-              height: contentHeight,
-              scale: 1.5, // Reduced scale for faster processing, still good quality
+              width: 210 * 3.779527559, // Convert mm to pixels (210mm * 3.779527559 = ~794px)
+              height: 297 * 3.779527559, // Convert mm to pixels (297mm * 3.779527559 = ~1123px)
+              scale: 2, // Higher scale for better quality
               useCORS: true,
               allowTaint: true,
               backgroundColor: '#ffffff',
               logging: false,
-              removeContainer: true, // Automatically remove container
-              foreignObjectRendering: false, // Faster rendering
-              imageTimeout: 5000, // 5 second timeout for images
+              removeContainer: true,
+              foreignObjectRendering: false,
+              imageTimeout: 10000, // 10 second timeout for images
               onclone: (clonedDoc) => {
-                // Ensure the cloned document has proper dimensions
+                // Ensure the cloned document maintains exact styling
                 const clonedContainer = clonedDoc.body.firstChild as HTMLElement;
                 if (clonedContainer) {
-                  clonedContainer.style.width = '100%';
-                  clonedContainer.style.height = 'auto';
+                  clonedContainer.style.width = '210mm';
                   clonedContainer.style.minHeight = '297mm';
+                  clonedContainer.style.margin = '0';
+                  clonedContainer.style.padding = '0';
                 }
               }
             });
@@ -556,10 +590,10 @@ export function generateContractHTML(contract: Contract): string {
             // Remove temporary container
             document.body.removeChild(tempContainer);
             
-            // Convert canvas to PDF with proper scaling
-            const imgData = canvas.toDataURL('image/jpeg', 0.9); // JPEG for smaller size, 0.9 quality
+            // Convert canvas to PDF with exact dimensions
+            const imgData = canvas.toDataURL('image/jpeg', 1.0); // Maximum quality for exact replication
             
-            // Calculate PDF dimensions to fit the content
+            // Create PDF with exact A4 dimensions
             const pdf = new jsPDF({
               orientation: 'portrait',
               unit: 'mm',
@@ -569,16 +603,8 @@ export function generateContractHTML(contract: Contract): string {
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             
-            // Ensure full content capture - use full dimensions without scaling down
-            const finalWidth = pageWidth;
-            const finalHeight = (pageWidth * canvas.height) / canvas.width;
-            
-            // Always start from top-left corner to capture full content
-            const xOffset = 0;
-            const yOffset = 0;
-            
-            // Add the screenshot to PDF at full size
-            pdf.addImage(imgData, 'JPEG', xOffset, yOffset, finalWidth, finalHeight);
+            // Add the screenshot to PDF at exact A4 size
+            pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight);
             
             // Save the PDF
             pdf.save(`contract_${contract.idCode}_${new Date().toISOString().split('T')[0]}.pdf`);

@@ -33,10 +33,25 @@ export const useCollection = <T>(
     const unsubscribe = onSnapshot(
       collectionRef,
       (snapshot) => {
-        const items = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as T[];
+        const items = snapshot.docs.map(doc => {
+          const data = doc.data();
+          // Convert Firestore Timestamps to Date objects
+          const convertedData = Object.keys(data).reduce((acc, key) => {
+            const value = data[key];
+            if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+              // This is a Firestore Timestamp
+              acc[key] = value.toDate();
+            } else {
+              acc[key] = value;
+            }
+            return acc;
+          }, {} as any);
+          
+          return {
+            id: doc.id,
+            ...convertedData
+          };
+        }) as T[];
         setData(items);
         setLoading(false);
       },
@@ -69,7 +84,20 @@ export const useDocument = <T>(collectionName: string, documentId: string) => {
       documentRef,
       (doc) => {
         if (doc.exists()) {
-          setData({ id: doc.id, ...doc.data() } as T);
+          const data = doc.data();
+          // Convert Firestore Timestamps to Date objects
+          const convertedData = Object.keys(data).reduce((acc, key) => {
+            const value = data[key];
+            if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+              // This is a Firestore Timestamp
+              acc[key] = value.toDate();
+            } else {
+              acc[key] = value;
+            }
+            return acc;
+          }, {} as any);
+          
+          setData({ id: doc.id, ...convertedData } as T);
         } else {
           setData(null);
         }

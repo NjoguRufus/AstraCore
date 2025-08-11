@@ -7,6 +7,7 @@ import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
 import { generateIDCard } from '../../utils/pdf';
 import { generateContractPDF, generateContractHTML, generateContractPDFFromScreenshot } from '../../utils/contractPdf';
+import { formatDate, getDaysUntilDeadline, getDeadlineColor } from '../../utils/dateUtils';
 import { 
   Download, 
   CheckCircle, 
@@ -114,42 +115,7 @@ export const MemberDashboard: React.FC = () => {
 
   const formatDeadline = (deadline: any) => {
     if (!deadline) return 'No deadline';
-    
-    try {
-      const date = deadline instanceof Date ? deadline : deadline.toDate ? deadline.toDate() : new Date(deadline);
-      return date.toLocaleDateString();
-    } catch (error) {
-      return 'Invalid date';
-    }
-  };
-
-  const getDaysUntilDeadline = (deadline: any) => {
-    if (!deadline) return null;
-    
-    try {
-      const date = deadline instanceof Date ? deadline : deadline.toDate ? deadline.toDate() : new Date(deadline);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      date.setHours(0, 0, 0, 0);
-      
-      const diffTime = date.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 0) return 'Overdue';
-      if (diffDays === 0) return 'Due today';
-      if (diffDays === 1) return 'Due tomorrow';
-      return `Due in ${diffDays} days`;
-    } catch (error) {
-      return null;
-    }
-  };
-
-  const getDeadlineColor = (deadline: any) => {
-    const daysText = getDaysUntilDeadline(deadline);
-    if (daysText === 'Overdue') return 'text-red-600';
-    if (daysText === 'Due today') return 'text-orange-600';
-    if (daysText === 'Due tomorrow') return 'text-yellow-600';
-    return 'text-gray-500';
+    return formatDate(deadline);
   };
 
   return (
@@ -369,7 +335,7 @@ export const MemberDashboard: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 mt-2">
-                    {announcement.createdAt?.toLocaleDateString()}
+                    {formatDate(announcement.createdAt)}
                   </p>
                 </div>
               ))}
@@ -442,25 +408,28 @@ export const MemberDashboard: React.FC = () => {
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">My Contract</h2>
               <div className="flex space-x-2">
-                <Button
-                  onClick={() => {
-                    // Generate and download PDF from screenshot
-                    if (viewMode === 'html') {
-                      // If in HTML view, take screenshot of the current view
-                      generateContractPDFFromScreenshot(userContract);
-                    } else {
-                      // If in simple view, switch to HTML view first, then generate PDF
-                      setViewMode('html');
-                      setTimeout(() => {
-                        generateContractPDFFromScreenshot(userContract);
-                      }, 100);
-                    }
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  {viewMode === 'html' ? 'Download PDF' : 'Generate PDF'}
-                </Button>
+                                  <Button
+                    onClick={() => {
+                      // Generate and download PDF from screenshot
+                      if (viewMode === 'html') {
+                        // If in HTML view, take screenshot of the current view
+                        // Add a small delay to ensure all styles are applied
+                        setTimeout(() => {
+                          generateContractPDFFromScreenshot(userContract);
+                        }, 200);
+                      } else {
+                        // If in simple view, switch to HTML view first, then generate PDF
+                        setViewMode('html');
+                        setTimeout(() => {
+                          generateContractPDFFromScreenshot(userContract);
+                        }, 300);
+                      }
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    {viewMode === 'html' ? 'Download PDF' : 'Generate PDF'}
+                  </Button>
                 <Button
                   variant="outline"
                   onClick={() => setShowContractModal(false)}
@@ -517,7 +486,7 @@ export const MemberDashboard: React.FC = () => {
                   
                   <h3 className="font-semibold text-gray-900 mb-4 text-center text-xl">Astraronix Solutions - Team Member Contract</h3>
                   <p className="text-sm text-gray-600 mb-6 text-center">
-                    This contract is made effective as of {userContract.signedAt ? new Date(userContract.signedAt).toLocaleDateString() : new Date().toLocaleDateString()} by and between:
+                    This contract is made effective as of {formatDate(userContract.signedAt) || new Date().toLocaleDateString()} by and between:
                   </p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-6">
@@ -604,7 +573,7 @@ export const MemberDashboard: React.FC = () => {
                     
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="mb-2"><strong>Contract Date:</strong> {userContract.signedAt ? new Date(userContract.signedAt).toLocaleDateString() : 'Not signed'}</p>
+                        <p className="mb-2"><strong>Contract Date:</strong> {formatDate(userContract.signedAt) || 'Not signed'}</p>
                         <p className="mb-2"><strong>Contract ID:</strong> {userContract.id}</p>
                       </div>
                       <div>
@@ -629,8 +598,8 @@ export const MemberDashboard: React.FC = () => {
                     <div className="flex items-center">
                       <Info className="w-4 h-4 text-blue-600 mr-2" />
                       <span className="text-blue-800 text-sm">
-                        This is the exact format that will be captured when you download the PDF. 
-                        The download button will take a screenshot of this view and convert it to PDF.
+                        <strong>PDF Preview:</strong> This contract view shows exactly how your downloaded PDF will appear. 
+                        All formatting, styling, and content will be preserved in the final document.
                       </span>
                     </div>
                   </div>
@@ -701,6 +670,8 @@ export const MemberDashboard: React.FC = () => {
         .contract-html-view .page ol {
           padding-left: 18px;
           margin: 10px 0;
+          counter-reset: item;
+          list-style: none;
         }
         
         .contract-html-view .page ol li {
@@ -708,6 +679,17 @@ export const MemberDashboard: React.FC = () => {
           line-height: 1.5;
           margin: 4px 0;
           color: #000;
+          counter-increment: item;
+          position: relative;
+        }
+        
+        .contract-html-view .page ol li::before {
+          content: counter(item) ". ";
+          font-weight: bold;
+          color: #003366;
+          position: absolute;
+          left: -18px;
+          top: 0;
         }
         
         .contract-html-view .signatures {

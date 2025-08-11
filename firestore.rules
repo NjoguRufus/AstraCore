@@ -153,6 +153,33 @@ service cloud.firestore {
                    ]);
     }
     
+    // Announcements Collection
+    match /announcements/{announcementId} {
+      // Admins have full access
+      allow read, write: if isAdmin();
+      
+      // Active users can read announcements
+      allow read: if isActiveUser();
+      
+      // Only admins can create, update, or delete announcements
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Wiki Documents Collection
+    match /wiki_docs/{docId} {
+      // Admins have full access
+      allow read, write: if isAdmin();
+      
+      // Active users can read wiki docs
+      allow read: if isActiveUser();
+      
+      // Team admins can create and update wiki docs
+      allow create, update: if isActiveUser() && isTeamAdmin(request.resource.data.teamId);
+      
+      // Only admins can delete wiki docs
+      allow delete: if isAdmin();
+    }
+    
     // System Collections (Restricted Access)
     match /system_settings/{settingId} {
       allow read, write: if isAdmin();

@@ -13,6 +13,7 @@ import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
 import { generateContractPDF, generateContractPDFFromScreenshot } from '../../utils/contractPdf';
+import { formatDate } from '../../utils/dateUtils';
 import { 
   Users, 
   Plus, 
@@ -749,7 +750,7 @@ export const AdminDashboard: React.FC = () => {
                   
                   <h3 className="font-semibold text-gray-900 mb-4 text-center text-xl">Astraronix Solutions - Team Member Contract</h3>
                   <p className="text-sm text-gray-600 mb-6 text-center">
-                    This contract is made effective as of {selectedMemberContract.signedAt ? new Date(selectedMemberContract.signedAt).toLocaleDateString() : new Date().toLocaleDateString()} by and between:
+                    This contract is made effective as of {formatDate(selectedMemberContract.signedAt) || new Date().toLocaleDateString()} by and between:
                   </p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-6">
@@ -836,7 +837,7 @@ export const AdminDashboard: React.FC = () => {
                     
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="mb-2"><strong>Contract Date:</strong> {selectedMemberContract.signedAt ? new Date(selectedMemberContract.signedAt).toLocaleDateString() : 'Not signed'}</p>
+                        <p className="mb-2"><strong>Contract Date:</strong> {formatDate(selectedMemberContract.signedAt) || 'Not signed'}</p>
                         <p className="mb-2"><strong>Contract ID:</strong> {selectedMemberContract.id}</p>
                       </div>
                       <div>

@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "../UI/Button";
 import { Card } from "../UI/Card";
-import { FileText, Download, Upload, CheckCircle, ArrowLeft, ArrowRight, Camera, RotateCcw, AlertCircle, X } from "lucide-react";
-import { uploadSignatureToCloudinary, testCloudinaryConnection, testCloudinaryFormData, checkCloudinaryAccount, testUploadPreset, diagnoseCloudinaryIssue } from "../../config/cloudinary";
+import { FileText, Download, CheckCircle, ArrowLeft, ArrowRight, Camera, RotateCcw, AlertCircle, X } from "lucide-react";
+import { uploadSignatureToCloudinary } from "../../config/cloudinary";
 import { toast } from "react-hot-toast";
 
 interface ContractSigningProps {
@@ -306,35 +306,7 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
 
 
 
-  const testCloudinary = async () => {
-    try {
-      toast.loading('Running comprehensive Cloudinary diagnosis...');
-      
-      // Run the comprehensive diagnostic
-      console.log('🔍 Starting Cloudinary diagnosis...');
-      await diagnoseCloudinaryIssue();
-      
-      // Also run the basic tests for comparison
-      console.log('');
-      console.log('🧪 Running basic tests for comparison...');
-      
-      // Check account details
-      await checkCloudinaryAccount();
-      
-      // Test upload preset
-      const presetTest = await testUploadPreset();
-      
-      if (presetTest) {
-        toast.success('Upload preset OK! Check console for full diagnosis.');
-          } else {
-        toast.error('Upload preset failed. Check console for detailed diagnosis.');
-      }
-      
-    } catch (error) {
-      console.error('Diagnosis failed:', error);
-      toast.error('Diagnosis failed. Check console for details.');
-    }
-  };
+
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -345,28 +317,6 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
             <h2 className="text-xl font-semibold text-gray-900">Contract Preview</h2>
             <div className="flex items-center gap-2">
               <Button
-                onClick={testCloudinary}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                Test Cloudinary
-              </Button>
-              <Button
-                onClick={async () => {
-                  toast.loading('Running comprehensive diagnosis...');
-                  await diagnoseCloudinaryIssue();
-                  toast.success('Diagnosis complete! Check console for details.');
-                }}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
-              >
-                🔍
-                Full Diagnosis
-              </Button>
-              <Button
                 onClick={downloadContract}
                 variant="outline"
                 size="sm"
@@ -375,7 +325,6 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
                 <Download className="w-4 h-4" />
                 Download PDF
               </Button>
-              
             </div>
           </div>
           
