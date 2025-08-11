@@ -266,10 +266,12 @@ export async function generateContractPDF(data: ContractData | Contract): Promis
           ctx?.drawImage(selfieImg, 0, 0);
           
           const selfieDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          const imgWidth = 40;
-          const imgHeight = 30;
+          const imgWidth = 60; // Increased from 40 to 60 (1.5x bigger)
+          const imgHeight = 45; // Increased from 30 to 45 (1.5x bigger)
           
-          pdf.addImage(selfieDataUrl, 'JPEG', pageWidth - margin - imgWidth, yPosition - 25, imgWidth, imgHeight);
+          // Push half an inch to the right (12.7mm ≈ 0.5 inch)
+          const rightMargin = margin + 12.7;
+          pdf.addImage(selfieDataUrl, 'JPEG', pageWidth - rightMargin - imgWidth, yPosition - 25, imgWidth, imgHeight);
           resolve(true);
         };
         selfieImg.onerror = reject;
@@ -389,6 +391,15 @@ export function generateContractHTML(contract: Contract): string {
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+        .selfie-image {
+            width: 150px !important;
+            height: 150px !important;
+            border-radius: 50% !important;
+            object-fit: cover !important;
+            border: 3px solid #3b82f6 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-left: 12.7mm !important; /* Push half an inch to the right (12.7mm ≈ 0.5 inch) */
+        }
         .meta {
             margin-top: 15px;
             font-size: 14px;
@@ -448,7 +459,7 @@ export function generateContractHTML(contract: Contract): string {
         </div>
         <div class="signature-block">
             <p><strong>Selfie Verification:</strong></p>
-            ${contract.selfieImageUrl ? `<img src="${contract.selfieImageUrl}" alt="Member Selfie" class="selfie-image" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #e5e7eb;">` : '<p>[Selfie Image]</p>'}
+            ${contract.selfieImageUrl ? `<img src="${contract.selfieImageUrl}" alt="Member Selfie" class="selfie-image">` : '<p>[Selfie Image]</p>'}
         </div>
     </div>
 

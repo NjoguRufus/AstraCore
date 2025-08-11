@@ -772,14 +772,35 @@ export const AdminDashboard: React.FC = () => {
                   {/* Terms and Conditions */}
                   <div className="mb-6">
                     <h4 className="font-medium text-gray-900 mb-3 text-base">Terms & Conditions:</h4>
-                    <div className="space-y-2 text-sm text-gray-700">
-                      <p><strong>1.</strong> The team member agrees to perform assigned duties with diligence and integrity.</p>
-                      <p><strong>2.</strong> Astraronix Solutions will provide necessary tools, resources, and agreed-upon compensation.</p>
-                      <p><strong>3.</strong> Both parties must maintain confidentiality of all proprietary information.</p>
-                      <p><strong>4.</strong> Either party may terminate this agreement with written notice, subject to any additional terms agreed upon.</p>
-                      <p><strong>5.</strong> The team member will adhere to company policies and procedures.</p>
-                      <p><strong>6.</strong> Intellectual property created during employment belongs to Astraronix Solutions.</p>
-                      <p><strong>7.</strong> This contract is governed by applicable employment laws.</p>
+                    <div className="space-y-3 text-sm text-gray-700">
+                      <div className="flex items-start space-x-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                        <p>The team member agrees to perform assigned duties with diligence and integrity.</p>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                        <p>Astraronix Solutions will provide necessary tools, resources, and agreed-upon compensation.</p>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                        <p>Both parties must maintain confidentiality of all proprietary information.</p>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                        <p>Either party may terminate this agreement with written notice, subject to any additional terms agreed upon.</p>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">5</span>
+                        <p>The team member will adhere to company policies and procedures.</p>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">6</span>
+                        <p>Intellectual property created during employment belongs to Astraronix Solutions.</p>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">7</span>
+                        <p>This contract is governed by applicable employment laws.</p>
+                      </div>
                     </div>
                   </div>
 
