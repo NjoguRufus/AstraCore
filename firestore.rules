@@ -26,10 +26,15 @@ service cloud.firestore {
       // - their own profile by UID, or
       // - any profile whose email matches their signed-in Google email, or
       // - an unclaimed pre-seeded record (uid is not yet set/empty) to support first-time claim by ID code
+      // - other users in the same team (for team collaboration)
       allow read: if isSignedIn() && (
         request.auth.uid == userId ||
         resource.data.email == request.auth.token.email ||
-        resource.data.uid == null || resource.data.uid == ''
+        resource.data.uid == null || resource.data.uid == '' ||
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.team == resource.data.team
+        )
       );
       
       // Allow any authenticated user to create their own profile during ID code claim
@@ -103,6 +108,11 @@ service cloud.firestore {
     
     // Allow listing teams collection for active users
     match /teams {
+      allow list: if isSignedIn();
+    }
+    
+    // Allow listing users collection for team members
+    match /users {
       allow list: if isSignedIn();
     }
     

@@ -14,17 +14,22 @@ import {
   Filter,
   AlertCircle,
   Info,
-  CheckCircle
+  CheckCircle,
+  Users,
+  Target
 } from 'lucide-react';
-import { Announcement } from '../../types';
+import { Announcement, User, Team } from '../../types';
 import { Timestamp } from 'firebase/firestore';
 
 export const AnnouncementManagement: React.FC = () => {
   const { data: announcements } = useCollection<Announcement>('announcements');
+  const { data: users } = useCollection<User>('users');
+  const { data: teams } = useCollection<Team>('teams');
   const { showConfirmation, showNotification } = useModal();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [targetFilter, setTargetFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,8 +37,30 @@ export const AnnouncementManagement: React.FC = () => {
   const [announcementForm, setAnnouncementForm] = useState({
     title: '',
     content: '',
-    priority: 'medium' as 'low' | 'medium' | 'high'
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    targetType: '' as '' | 'all' | 'team' | 'individual',
+    targetTeam: '',
+    targetMembers: [] as string[]
   });
+
+  // Helper function to get team members
+  const getTeamMembers = (teamName: string) => {
+    return users?.filter(member => member.team === teamName) || [];
+  };
+
+  // Helper function to get target audience count
+  const getTargetAudienceCount = () => {
+    switch (announcementForm.targetType) {
+      case 'all':
+        return users?.length || 0;
+      case 'team':
+        return announcementForm.targetTeam ? getTeamMembers(announcementForm.targetTeam).length : 0;
+      case 'individual':
+        return announcementForm.targetMembers.length;
+      default:
+        return 0;
+    }
+  };
 
   // Helper function to convert Firestore Timestamp to Date if needed
   const getDate = (date: Date | Timestamp | undefined): Date | null => {
@@ -59,18 +86,45 @@ export const AnnouncementManagement: React.FC = () => {
     const matchesSearch = announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          announcement.content.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = priorityFilter === 'all' || announcement.priority === priorityFilter;
-    return matchesSearch && matchesPriority;
+    const matchesTarget = targetFilter === 'all' || announcement.targetType === targetFilter;
+    return matchesSearch && matchesPriority && matchesTarget;
   });
 
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!announcementForm.title || !announcementForm.content) return;
+    
+    // Validate targeting
+    if (announcementForm.targetType === 'team' && !announcementForm.targetTeam) {
+      showNotification({
+        title: 'Validation Error',
+        message: 'Please select a team for team targeting.',
+        type: 'warning'
+      });
+      return;
+    }
+    
+    if (announcementForm.targetType === 'individual' && announcementForm.targetMembers.length === 0) {
+      showNotification({
+        title: 'Validation Error',
+        message: 'Please select at least one member for individual targeting.',
+        type: 'warning'
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
       await createAnnouncement(announcementForm);
 
-      setAnnouncementForm({ title: '', content: '', priority: 'medium' });
+      setAnnouncementForm({ 
+        title: '', 
+        content: '', 
+        priority: 'medium',
+        targetType: '',
+        targetTeam: '',
+        targetMembers: []
+      });
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error creating announcement:', error);
@@ -93,7 +147,14 @@ export const AnnouncementManagement: React.FC = () => {
       await updateAnnouncement(editingAnnouncement.id, announcementForm);
 
       setEditingAnnouncement(null);
-      setAnnouncementForm({ title: '', content: '', priority: 'medium' });
+      setAnnouncementForm({ 
+        title: '', 
+        content: '', 
+        priority: 'medium',
+        targetType: '',
+        targetTeam: '',
+        targetMembers: []
+      });
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error updating announcement:', error);
@@ -135,7 +196,10 @@ export const AnnouncementManagement: React.FC = () => {
     setAnnouncementForm({
       title: announcement.title,
       content: announcement.content,
-      priority: announcement.priority
+      priority: announcement.priority,
+      targetType: announcement.targetType || '',
+      targetTeam: announcement.targetTeam || '',
+      targetMembers: announcement.targetMembers || []
     });
     setShowCreateModal(true);
   };
@@ -261,6 +325,19 @@ export const AnnouncementManagement: React.FC = () => {
                 <option value="low">Low Priority</option>
               </select>
             </div>
+            <div className="flex items-center space-x-2">
+              <Target className="w-4 h-4 text-gray-400" />
+              <select
+                value={targetFilter}
+                onChange={(e) => setTargetFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Targets</option>
+                <option value="all">All Members</option>
+                <option value="team">Team Specific</option>
+                <option value="individual">Individual Members</option>
+              </select>
+            </div>
           </div>
         </Card>
 
@@ -278,6 +355,36 @@ export const AnnouncementManagement: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-gray-600 mb-3">{announcement.content}</p>
+                  
+                  {/* Target Audience Display */}
+                  <div className="mb-3">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Target className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-700">Target Audience:</span>
+                    </div>
+                    {announcement.targetType === 'all' ? (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        <Users className="w-3 h-3 mr-1" />
+                        All Members
+                      </span>
+                    ) : announcement.targetType === 'team' && announcement.targetTeam ? (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                        <Users className="w-3 h-3 mr-1" />
+                        Team: {announcement.targetTeam}
+                      </span>
+                    ) : announcement.targetType === 'individual' && announcement.targetMembers && announcement.targetMembers.length > 0 ? (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                        <Users className="w-3 h-3 mr-1" />
+                        {announcement.targetMembers.length} Individual Member{announcement.targetMembers.length !== 1 ? 's' : ''}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        No target specified
+                      </span>
+                    )}
+                  </div>
+                  
                   <p className="text-sm text-gray-400">
                     Created: {formatDate(announcement.createdAt)} at {formatTime(announcement.createdAt)}
                   </p>
@@ -352,6 +459,125 @@ export const AnnouncementManagement: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Target Audience
+                  </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Choose who should receive this announcement. You can target all members, a specific team, or select individual members.
+                  </p>
+                  <p className="text-xs text-blue-600 mb-2">
+                    💡 <strong>Tip:</strong> Use "All Members" for company-wide announcements, "Team" for team-specific updates, or "Individual" for personalized messages.
+                  </p>
+                  <select
+                    value={announcementForm.targetType}
+                    onChange={(e) => {
+                      const targetType = e.target.value as '' | 'all' | 'team' | 'individual';
+                      setAnnouncementForm(prev => ({ 
+                        ...prev, 
+                        targetType,
+                        targetTeam: '',
+                        targetMembers: []
+                      }));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select target audience</option>
+                    <option value="all">All Members</option>
+                    <option value="team">Specific Team</option>
+                    <option value="individual">Specific Members</option>
+                  </select>
+                </div>
+
+                {/* Team Selection for Team Targeting */}
+                {announcementForm.targetType === 'team' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Team
+                    </label>
+                    <select
+                      value={announcementForm.targetTeam}
+                      onChange={(e) => setAnnouncementForm(prev => ({ ...prev, targetTeam: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select a team</option>
+                      {teams?.map((team) => {
+                        const teamMembers = getTeamMembers(team.name);
+                        return (
+                          <option key={team.id} value={team.name}>
+                            {team.name} ({teamMembers.length} members)
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+
+                {/* Individual Member Selection */}
+                {announcementForm.targetType === 'individual' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Members
+                    </label>
+                    <div className="space-y-3">
+                      {/* Team Filter */}
+                      <div>
+                        <select
+                          value={announcementForm.targetTeam || ''}
+                          onChange={(e) => setAnnouncementForm(prev => ({ ...prev, targetTeam: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="">All Teams</option>
+                          {teams?.map((team) => (
+                            <option key={team.id} value={team.name}>
+                              {team.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {/* Member List */}
+                      <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-2">
+                        {users
+                          ?.filter(member => !announcementForm.targetTeam || member.team === announcementForm.targetTeam)
+                          .map((member) => (
+                            <label key={member.uid} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                              <input
+                                type="checkbox"
+                                checked={announcementForm.targetMembers.includes(member.uid)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setAnnouncementForm(prev => ({
+                                      ...prev,
+                                      targetMembers: [...prev.targetMembers, member.uid]
+                                    }));
+                                  } else {
+                                    setAnnouncementForm(prev => ({
+                                      ...prev,
+                                      targetMembers: prev.targetMembers.filter(id => id !== member.uid)
+                                    }));
+                                  }
+                                }}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <span className="text-sm font-medium text-gray-700">{member.name}</span>
+                                <span className="text-xs text-gray-500 ml-2">({member.role})</span>
+                                <span className="text-xs text-gray-400 ml-2">• {member.team}</span>
+                              </div>
+                            </label>
+                          ))}
+                        {users?.filter(member => !announcementForm.targetTeam || member.team === announcementForm.targetTeam).length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-2">
+                            {announcementForm.targetTeam ? `No members found in ${announcementForm.targetTeam}` : 'No active members found'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Priority Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Priority
                   </label>
                   <select
@@ -365,13 +591,65 @@ export const AnnouncementManagement: React.FC = () => {
                   </select>
                 </div>
 
+                {/* Target Summary */}
+                {announcementForm.targetType && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-blue-900 mb-2">Target Summary:</h4>
+                    
+                    {announcementForm.targetType === 'all' ? (
+                      <p className="text-sm text-blue-700">
+                        <span className="font-medium">All Members:</span> {users?.length || 0} active members
+                      </p>
+                    ) : announcementForm.targetType === 'team' && announcementForm.targetTeam ? (
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Team:</span> {announcementForm.targetTeam}
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          {getTeamMembers(announcementForm.targetTeam).length} members will receive this announcement
+                        </p>
+                      </div>
+                    ) : announcementForm.targetType === 'individual' && announcementForm.targetMembers.length > 0 ? (
+                      <div>
+                        <p className="text-sm text-blue-700 mb-1">
+                          <span className="font-medium">Selected Members:</span> {announcementForm.targetMembers.length} selected
+                        </p>
+                        <div className="space-y-1 max-h-20 overflow-y-auto">
+                          {announcementForm.targetMembers.map((memberId) => {
+                            const member = users?.find(m => m.uid === memberId);
+                            return member ? (
+                              <p key={memberId} className="text-sm text-blue-600 flex items-center space-x-2">
+                                <span>•</span>
+                                <span>{member.name}</span>
+                                <span className="text-xs text-blue-500">({member.role})</span>
+                                <span className="text-xs text-blue-400">• {member.team}</span>
+                              </p>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-yellow-600">
+                        Please select target audience members
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex space-x-3 pt-4">
                   <Button
                     type="button"
                     onClick={() => {
                       setShowCreateModal(false);
                       setEditingAnnouncement(null);
-                      setAnnouncementForm({ title: '', content: '', priority: 'medium' });
+                      setAnnouncementForm({ 
+                        title: '', 
+                        content: '', 
+                        priority: 'medium',
+                        targetType: '',
+                        targetTeam: '',
+                        targetMembers: []
+                      });
                     }}
                     variant="outline"
                     className="flex-1"
@@ -381,9 +659,17 @@ export const AnnouncementManagement: React.FC = () => {
                   <Button
                     type="submit"
                     isLoading={isLoading}
+                    disabled={!announcementForm.targetType || 
+                      (announcementForm.targetType === 'team' && !announcementForm.targetTeam) ||
+                      (announcementForm.targetType === 'individual' && announcementForm.targetMembers.length === 0)}
                     className="flex-1"
                   >
                     {editingAnnouncement ? 'Update' : 'Create'} Announcement
+                    {announcementForm.targetType && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        {getTargetAudienceCount()} target{getTargetAudienceCount() !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </Button>
                 </div>
               </form>

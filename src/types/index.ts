@@ -28,6 +28,7 @@ export interface Project {
   description: string;
   assignedTo: string[]; // UIDs of assigned members
   assignedTeam?: string; // Team name if assigned to entire team
+  assignedType?: 'individual' | 'team' | 'hybrid';
   team?: string;
   status: 'upcoming' | 'in-progress' | 'completed';
   deadline: Date;
@@ -40,6 +41,9 @@ export interface Announcement {
   content: string;
   createdAt: Date;
   priority: 'low' | 'medium' | 'high';
+  targetType?: 'all' | 'team' | 'individual';
+  targetTeam?: string;
+  targetMembers?: string[];
 }
 
 export interface Contract {

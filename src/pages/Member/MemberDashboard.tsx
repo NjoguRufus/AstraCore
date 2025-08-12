@@ -24,13 +24,14 @@ import {
   Info,
   FileText
 } from 'lucide-react';
-import { Project, Announcement } from '../../types';
+import { Project, Announcement, User } from '../../types';
 
 export const MemberDashboard: React.FC = () => {
   const { user } = useAuth();
   const { showNotification } = useModal();
   const { data: projects, loading: projectsLoading, error: projectsError } = useCollection<Project>('projects');
   const { data: announcements, loading: announcementsLoading, error: announcementsError } = useCollection<Announcement>('announcements');
+  const { data: users, loading: usersLoading, error: usersError } = useCollection<User>('users');
   const { newProjects, hasNewNotifications, clearNotifications } = useProjectNotifications();
   
   const [showNotifications, setShowNotifications] = useState(true);
@@ -38,6 +39,8 @@ export const MemberDashboard: React.FC = () => {
   const [userContract, setUserContract] = useState<any>(null);
   const [loadingContract, setLoadingContract] = useState(false);
   const [viewMode, setViewMode] = useState<'simple' | 'html'>('simple');
+  const [showProjectMembersModal, setShowProjectMembersModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   // Check if onboarding is completed
   useEffect(() => {
@@ -46,34 +49,23 @@ export const MemberDashboard: React.FC = () => {
     }
   }, [user]);
 
+  // Filter projects for the current user
   const userProjects = projects.filter(project => 
     project.assignedTo.includes(user?.uid || '')
   );
   
-  // Debug: Log project filtering
-  console.log('MemberDashboard - All projects:', projects.length);
-  console.log('MemberDashboard - User UID:', user?.uid);
-  console.log('MemberDashboard - User projects:', userProjects.length);
-  console.log('MemberDashboard - User projects details:', userProjects.map(p => ({ id: p.id, title: p.title, assignedTo: p.assignedTo })));
+  // Filter announcements for the current user based on targeting
+  const userAnnouncements = announcements.filter(announcement => {
+    if (announcement.targetType === 'all') return true;
+    if (announcement.targetType === 'team' && announcement.targetTeam === user?.team) return true;
+    if (announcement.targetType === 'individual' && announcement.targetMembers?.includes(user?.uid || '')) return true;
+    if (!announcement.targetType) return true;
+    return false;
+  });
   
-  // Debug: Log authentication state
-  console.log('MemberDashboard - User object:', user);
-  console.log('MemberDashboard - User status:', user?.status);
-  console.log('MemberDashboard - User isAdmin:', user?.isAdmin);
-  
-  // Log any errors
-  if (projectsError) {
-    console.error('Projects loading error:', projectsError);
-  }
-  if (announcementsError) {
-    console.error('Announcements loading error:', announcementsError);
-  }
-
   const completedProjects = userProjects.filter(p => p.status === 'completed');
   const inProgressProjects = userProjects.filter(p => p.status === 'in-progress');
   const upcomingProjects = userProjects.filter(p => p.status === 'upcoming');
-
-
 
   const handleDownloadID = () => {
     if (user) {
@@ -86,35 +78,31 @@ export const MemberDashboard: React.FC = () => {
     
     setLoadingContract(true);
     try {
-      // Import Firebase service
       const { getContractByUserId } = await import('../../services/firebaseService');
       const contract = await getContractByUserId(user.uid);
       
       if (contract) {
         setUserContract(contract);
         setShowContractModal(true);
-      } else {
-        // If no contract found, check if user has contractId
-        if (user.contractId) {
-          const { getContractById } = await import('../../services/firebaseService');
-          const contractById = await getContractById(user.contractId);
-          if (contractById) {
-            setUserContract(contractById);
-            setShowContractModal(true);
-          } else {
-            showNotification({
-              title: 'Contract Not Found',
-              message: 'Contract not found. Please contact an administrator.',
-              type: 'warning'
-            });
-          }
+      } else if (user.contractId) {
+        const { getContractById } = await import('../../services/firebaseService');
+        const contractById = await getContractById(user.contractId);
+        if (contractById) {
+          setUserContract(contractById);
+          setShowContractModal(true);
         } else {
           showNotification({
-            title: 'No Contract',
-            message: 'No contract found. Please contact an administrator.',
+            title: 'Contract Not Found',
+            message: 'Contract not found. Please contact an administrator.',
             type: 'warning'
           });
         }
+      } else {
+        showNotification({
+          title: 'No Contract',
+          message: 'No contract found. Please contact an administrator.',
+          type: 'warning'
+        });
       }
     } catch (error) {
       console.error('Error fetching contract:', error);
@@ -146,17 +134,30 @@ export const MemberDashboard: React.FC = () => {
     }
   };
 
-  const formatDeadline = (deadline: any) => {
-    if (!deadline) return 'No deadline';
-    return formatDate(deadline);
+  // Helper function to determine project assignment type
+  const getProjectAssignmentType = (project: Project) => {
+    if (project.assignedType) return project.assignedType;
+    if (project.assignedTo.length > 2) return 'team';
+    if (project.assignedTo.length === 2) return 'hybrid';
+    return 'individual';
+  };
+
+  // Helper function to get project members
+  const getProjectMembers = (project: Project) => {
+    return users.filter(user => project.assignedTo.includes(user.uid));
+  };
+
+  // Helper function to open project members modal
+  const handleViewProjectMembers = (project: Project) => {
+    setSelectedProject(project);
+    setShowProjectMembersModal(true);
   };
 
   return (
-    <>
-      <Layout>
+    <Layout>
       <div className="p-6 space-y-6">
         {/* Error Display */}
-        {(projectsError || announcementsError) && (
+        {(projectsError || announcementsError || usersError) && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <h3 className="text-lg font-medium text-red-800 mb-2">Data Loading Errors</h3>
             {projectsError && (
@@ -165,19 +166,29 @@ export const MemberDashboard: React.FC = () => {
               </p>
             )}
             {announcementsError && (
-              <p className="text-red-700">
+              <p className="text-red-700 mb-2">
                 <strong>Announcements Error:</strong> {announcementsError.message}
+              </p>
+            )}
+            {usersError && (
+              <p className="text-red-700">
+                <strong>Users Error:</strong> {usersError.message}
               </p>
             )}
           </div>
         )}
 
         {/* Loading States */}
-        {(projectsLoading || announcementsLoading) && (
+        {(projectsLoading || announcementsLoading || usersLoading) && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-blue-700">
-              {projectsLoading && announcementsLoading ? 'Loading data...' : 
-               projectsLoading ? 'Loading projects...' : 'Loading announcements...'}
+              {projectsLoading && announcementsLoading && usersLoading ? 'Loading data...' : 
+               projectsLoading && announcementsLoading ? 'Loading projects and announcements...' :
+               projectsLoading && usersLoading ? 'Loading projects and team data...' :
+               announcementsLoading && usersLoading ? 'Loading announcements and team data...' :
+               projectsLoading ? 'Loading projects...' : 
+               announcementsLoading ? 'Loading announcements...' :
+               usersLoading ? 'Loading team data...' : 'Loading...'}
             </p>
           </div>
         )}
@@ -319,6 +330,7 @@ export const MemberDashboard: React.FC = () => {
           </Card>
         </div>
 
+        {/* Projects and Announcements Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Projects */}
           <Card>
@@ -327,8 +339,15 @@ export const MemberDashboard: React.FC = () => {
                 <Target className="w-5 h-5" />
                 <span>My Projects</span>
               </h2>
-              <Button variant="ghost" size="sm">View All</Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => window.location.href = '/member/projects'}
+              >
+                View All
+              </Button>
             </div>
+
             <div className="space-y-3">
               {userProjects.slice(0, 5).map((project) => (
                 <div key={project.id} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -343,10 +362,44 @@ export const MemberDashboard: React.FC = () => {
                             {getDaysUntilDeadline(project.deadline)}
                           </span>
                         </div>
+                        <div className="flex items-center space-x-1">
+                          {getProjectAssignmentType(project) === 'team' ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                              <Users className="w-2.5 h-2.5 mr-1" />
+                              Team Project
+                            </span>
+                          ) : getProjectAssignmentType(project) === 'hybrid' ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                              <Users className="w-2.5 h-2.5 mr-1" />
+                              Team + Individual
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                              <Users className="w-2.5 h-2.5 mr-1" />
+                              Individual
+                            </span>
+                          )}
+                        </div>
+                        
                         {project.team && (
                           <div className="flex items-center space-x-1">
                             <Users className="w-3 h-3" />
                             <span>{project.team}</span>
+                          </div>
+                        )}
+                        
+                        {/* Show "See Other Project Members" button for team projects */}
+                        {getProjectAssignmentType(project) === 'team' && project.assignedTo.length > 2 && (
+                          <div className="mt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewProjectMembers(project)}
+                              className="text-blue-600 hover:text-blue-700 text-xs"
+                            >
+                              <Users className="w-3 h-3 mr-1" />
+                              See Other Project Members ({project.assignedTo.length})
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -368,7 +421,7 @@ export const MemberDashboard: React.FC = () => {
             </div>
           </Card>
 
-          {/* Announcements */}
+          {/* Announcements Section */}
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
@@ -376,46 +429,233 @@ export const MemberDashboard: React.FC = () => {
                 <span>Latest Announcements</span>
               </h2>
             </div>
+
             <div className="space-y-3">
-              {announcements.slice(0, 3).map((announcement) => (
+              {userAnnouncements.slice(0, 3).map((announcement) => (
                 <div key={announcement.id} className="p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900">{announcement.title}</h3>
                       <p className="text-sm text-gray-600 mt-1">{announcement.content}</p>
+                      
+                      <div className="mt-2">
+                        {announcement.targetType === 'all' ? (
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                            <Users className="w-3 h-3 mr-1" />
+                            Company-wide
+                          </span>
+                        ) : announcement.targetType === 'team' && announcement.targetTeam ? (
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                            <Users className="w-3 h-3 mr-1" />
+                            Team: {announcement.targetTeam}
+                          </span>
+                        ) : announcement.targetType === 'individual' && announcement.targetMembers && announcement.targetMembers.length > 0 ? (
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                            <Users className="w-3 h-3 mr-1" />
+                            Personal Message
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+                            <Info className="w-3 h-3 mr-1" />
+                            General
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                      announcement.priority === 'high' 
-                        ? 'bg-red-100 text-red-800'
-                        : announcement.priority === 'medium'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {announcement.priority}
-                    </span>
+                    <div className="flex flex-col items-end space-y-2">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        announcement.priority === 'high' 
+                          ? 'bg-red-100 text-red-800'
+                          : announcement.priority === 'medium'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {announcement.priority}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-xs text-gray-400 mt-2">
                     {formatDate(announcement.createdAt)}
                   </p>
                 </div>
               ))}
-              {announcements.length === 0 && (
+              {userAnnouncements.length === 0 && (
                 <div className="text-center py-8">
                   <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 mb-2">No announcements yet.</p>
-                  <p className="text-sm text-gray-400">Check back later for updates.</p>
+                  <p className="text-gray-500 mb-2">No announcements for you yet.</p>
+                  <p className="text-sm text-gray-400">
+                    You'll see company-wide, team-specific, and personal announcements here.
+                  </p>
+                </div>
+              )}
+              
+              {userAnnouncements.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => window.location.href = '/announcements'}
+                  >
+                    <Bell className="w-4 h-4 mr-2" />
+                    View All Announcements
+                  </Button>
                 </div>
               )}
             </div>
           </Card>
         </div>
 
+        {/* Team Section */}
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+              <Users className="w-5 h-5" />
+              <span>My Team</span>
+            </h2>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-500">
+                {user?.team || 'No team assigned'}
+              </span>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => window.location.href = '/member/profile'}
+              >
+                View All
+              </Button>
+            </div>
+          </div>
+          
+          {user?.team ? (
+            <div className="space-y-3">
+              {usersLoading && (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+                  <p className="text-sm text-gray-500">Loading team members...</p>
+                </div>
+              )}
+              
+              {!usersLoading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {users
+                    ?.filter(member => member.team === user.team && member.uid !== user.uid)
+                    .map((member) => (
+                      <div key={member.uid} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        {member.photoURL ? (
+                          <img
+                            src={member.photoURL}
+                            alt={member.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Users className="w-5 h-5 text-blue-600" />
+                          </div>
+                        )}
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <h3 className="font-medium text-gray-900 truncate">
+                              {member.name}
+                              {member.uid === user.uid && (
+                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                  You
+                                </span>
+                              )}
+                            </h3>
+                            <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${
+                              member.role === 'admin' 
+                                ? 'bg-red-100 text-red-800'
+                                : member.role === 'dev'
+                                ? 'bg-blue-100 text-blue-800'
+                                : member.role === 'design'
+                                ? 'bg-purple-100 text-purple-800'
+                                : member.role === 'cyber'
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {member.role}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500">
+                            <span className="flex items-center space-x-1">
+                              <Target className="w-3 h-3" />
+                              <span>
+                                {userProjects.filter(p => p.assignedTo.includes(member.uid)).length} projects
+                              </span>
+                            </span>
+                            <span className="flex items-center space-x-1">
+                              <Award className="w-3 h-3" />
+                              <span>
+                                {member.skills?.length || 0} skills
+                              </span>
+                            </span>
+                            <span className={`flex items-center space-x-1 ${
+                              member.status === 'active' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              <div className={`w-2 h-2 rounded-full ${
+                                member.status === 'active' ? 'bg-green-500' : 'bg-red-500'
+                              }`}></div>
+                              <span className="capitalize">{member.status}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+              
+              {!usersLoading && users && users.filter(member => member.team === user.team && member.uid !== user.uid).length === 0 && (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 mb-2">You're the only member in this team</p>
+                  <p className="text-sm text-gray-400">More team members will appear here when they join.</p>
+                </div>
+              )}
+              
+              {!usersLoading && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-blue-900 font-medium">
+                      Team Summary
+                    </span>
+                    <span className="text-blue-700">
+                      {users?.filter(member => member.team === user.team).length || 0} members
+                    </span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-blue-700">
+                    <div className="flex items-center space-x-1">
+                      <CheckCircle className="w-3 h-3" />
+                      <span>
+                        {users?.filter(member => member.team === user.team && member.status === 'active').length || 0} active
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Clock className="w-3 h-3" />
+                      <span>
+                        {userProjects.filter(p => getProjectAssignmentType(p) === 'team').length} team projects
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 mb-2">No team assigned</p>
+              <p className="text-sm text-gray-400">Contact your administrator to join a team.</p>
+            </div>
+          )}
+        </Card>
+
         {/* Skills & Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">My Skills</h2>
             <div className="flex flex-wrap gap-2">
-              {user?.skills.map((skill) => (
+              {user?.skills?.map((skill) => (
                 <span
                   key={skill}
                   className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
@@ -435,15 +675,27 @@ export const MemberDashboard: React.FC = () => {
           <Card>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => window.location.href = '/wiki'}
+              >
                 <BookOpen className="w-4 h-4 mr-2" />
                 Browse Wiki
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => window.location.href = '/member/profile'}
+              >
                 <Users className="w-4 h-4 mr-2" />
                 View Team
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => window.location.href = '/member/projects'}
+              >
                 <Target className="w-4 h-4 mr-2" />
                 My Projects
               </Button>
@@ -468,28 +720,24 @@ export const MemberDashboard: React.FC = () => {
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">My Contract</h2>
               <div className="flex space-x-2">
-                                  <Button
-                    onClick={() => {
-                      // Generate and download PDF from screenshot
-                      if (viewMode === 'html') {
-                        // If in HTML view, take screenshot of the current view
-                        // Add a small delay to ensure all styles are applied
-                        setTimeout(() => {
-                          generateContractPDFFromScreenshot(userContract);
-                        }, 200);
-                      } else {
-                        // If in simple view, switch to HTML view first, then generate PDF
-                        setViewMode('html');
-                        setTimeout(() => {
-                          generateContractPDFFromScreenshot(userContract);
-                        }, 300);
-                      }
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    {viewMode === 'html' ? 'Download PDF' : 'Generate PDF'}
-                  </Button>
+                <Button
+                  onClick={() => {
+                    if (viewMode === 'html') {
+                      setTimeout(() => {
+                        generateContractPDFFromScreenshot(userContract);
+                      }, 200);
+                    } else {
+                      setViewMode('html');
+                      setTimeout(() => {
+                        generateContractPDFFromScreenshot(userContract);
+                      }, 300);
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  {viewMode === 'html' ? 'Download PDF' : 'Generate PDF'}
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => setShowContractModal(false)}
@@ -500,7 +748,6 @@ export const MemberDashboard: React.FC = () => {
             </div>
             
             <div className="p-6">
-              {/* View Toggle Buttons */}
               <div className="flex flex-col items-center mb-6">
                 <div className="bg-gray-100 rounded-lg p-1 mb-3">
                   <button
@@ -532,10 +779,8 @@ export const MemberDashboard: React.FC = () => {
                 </p>
               </div>
 
-              {/* Simple View */}
               {viewMode === 'simple' && (
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  {/* Company Logo */}
                   <div className="flex items-center justify-center mb-6">
                     <img 
                       src="https://i.imgur.com/T7mH4Ly.png" 
@@ -566,7 +811,6 @@ export const MemberDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Terms and Conditions */}
                   <div className="mb-6">
                     <h4 className="font-medium text-gray-900 mb-3 text-base">Terms & Conditions:</h4>
                     <div className="space-y-3 text-sm text-gray-700">
@@ -601,7 +845,6 @@ export const MemberDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Signatures and Verification */}
                   <div className="border-t pt-4">
                     <h4 className="font-medium text-gray-900 mb-3 text-base">Contract Verification:</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -651,7 +894,6 @@ export const MemberDashboard: React.FC = () => {
                 </div>
               )}
 
-              {/* HTML Contract View */}
               {viewMode === 'html' && (
                 <>
                   <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -674,178 +916,112 @@ export const MemberDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* CSS Styles for HTML Contract View */}
-      <style>{`
-        .contract-html-view {
-          background: white;
-          padding: 0;
-          border-radius: 12px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-          border: 1px solid #e5e7eb;
-          max-width: 210mm;
-          margin: 0 auto;
-          overflow: hidden;
-        }
-        
-        .contract-html-view .page {
-          width: 210mm;
-          min-height: 297mm;
-          margin: 0;
-          background: white url('/images/contract.jpg') no-repeat top center;
-          background-size: cover;
-          position: relative;
-          padding: 40mm 25mm 20mm 25mm;
-          box-sizing: border-box;
-          font-family: Arial, sans-serif;
-        }
-        
-        .contract-html-view .page h1 {
-          color: white;
-          font-size: 22px;
-          text-align: center;
-          text-transform: uppercase;
-          margin-bottom: 20px;
-          margin-top: 0;
-          text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
-          font-weight: bold;
-        }
-        
-        .contract-html-view .page h2 {
-          color: #003366;
-          font-size: 16px;
-          border-bottom: 2px solid #003366;
-          padding-bottom: 3px;
-          margin-top: 20px;
-          margin-bottom: 5px;
-          font-weight: bold;
-        }
-        
-        .contract-html-view .page p {
-          font-size: 14px;
-          line-height: 1.5;
-          margin: 4px 0;
-          color: #000;
-        }
-        
-        .contract-html-view .page ol {
-          padding-left: 18px;
-          margin: 10px 0;
-          counter-reset: item;
-          list-style: none;
-        }
-        
-        .contract-html-view .page ol li {
-          font-size: 14px;
-          line-height: 1.5;
-          margin: 4px 0;
-          color: #000;
-          counter-increment: item;
-          position: relative;
-        }
-        
-        .contract-html-view .page ol li::before {
-          content: counter(item) ". ";
-          font-weight: bold;
-          color: #003366;
-          position: absolute;
-          left: -18px;
-          top: 0;
-        }
-        
-        .contract-html-view .signatures {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 25px;
-          gap: 20px;
-        }
-        
-        .contract-html-view .signature-block {
-          width: 45%;
-          text-align: center;
-        }
-        
-        .contract-html-view .signature-block p {
-          margin-bottom: 10px;
-          font-weight: bold;
-          color: #003366;
-        }
-        
-        .contract-html-view .signature-block img {
-          max-width: 100%;
-          height: auto;
-          margin-top: 5px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-        }
-        
-        .contract-html-view .signature-block .selfie-image {
-          width: 150px !important;
-          height: 150px !important;
-          border-radius: 50% !important;
-          object-fit: cover !important;
-          border: 3px solid #3b82f6 !important;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          margin-left: 12.7mm !important; /* Push half an inch to the right (12.7mm ≈ 0.5 inch) */
-        }
-        
-        .contract-html-view .meta {
-          margin-top: 15px;
-          font-size: 14px;
-          color: #000;
-        }
-        
-        .contract-html-view .meta p {
-          margin: 4px 0;
-          color: #000;
-        }
-        
-        .contract-html-view .footer {
-          position: absolute;
-          bottom: 15mm;
-          left: 0;
-          right: 0;
-          text-align: center;
-          font-size: 12px;
-          color: #666;
-        }
-        
-        .contract-html-view .letterhead-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 40mm;
-          background: rgba(255, 255, 255, 0.1);
-          pointer-events: none;
-        }
-        
-        /* Responsive adjustments for smaller screens */
-        @media (max-width: 768px) {
-        .contract-html-view {
-            max-width: 100%;
-            margin: 0 10px;
-          }
-          
-        .contract-html-view .page {
-            width: 100%;
-            padding: 20mm 15mm 15mm 15mm;
-            background-size: contain;
-          }
-          
-        .contract-html-view .signatures {
-            flex-direction: column;
-            gap: 15px;
-        }
-          
-        .contract-html-view .signature-block {
-            width: 100%;
-          }
-        }
-      `}</style>
+      {/* Project Members Modal */}
+      {showProjectMembersModal && selectedProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Project Members: {selectedProject.title}
+              </h2>
+              <Button
+                variant="outline"
+                onClick={() => setShowProjectMembersModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
+                  <Users className="w-4 h-4" />
+                  <span>{selectedProject.assignedTo.length} members assigned</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <Target className="w-4 h-4" />
+                  <span>Status: {selectedProject.status}</span>
+                  <span>•</span>
+                  <span>Deadline: {formatDate(selectedProject.deadline)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {getProjectMembers(selectedProject).map((member) => (
+                  <div key={member.uid} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                    {member.photoURL ? (
+                      <img
+                        src={member.photoURL}
+                        alt={member.name}
+                        className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center border-2 border-white shadow-md">
+                        <Users className="w-8 h-8 text-blue-600" />
+                      </div>
+                    )}
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {member.name}
+                          {member.uid === user?.uid && (
+                            <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                              You
+                            </span>
+                          )}
+                        </h3>
+                        <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                          member.role === 'admin' 
+                            ? 'bg-red-100 text-red-800'
+                            : member.role === 'dev'
+                            ? 'bg-blue-100 text-blue-800'
+                            : member.role === 'design'
+                            ? 'bg-purple-100 text-purple-800'
+                            : member.role === 'cyber'
+                            ? 'bg-orange-100 text-orange-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {member.role}
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                        <div className="flex items-center space-x-2">
+                          <Users className="w-4 h-4" />
+                          <span>Team: {member.team}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Award className="w-4 h-4" />
+                          <span>{member.skills?.length || 0} skills</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Target className="w-4 h-4" />
+                          <span>
+                            {userProjects.filter(p => p.assignedTo.includes(member.uid)).length} projects
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            member.status === 'active' ? 'bg-green-500' : 'bg-red-500'
+                          }`}></div>
+                          <span className="capitalize">{member.status}</span>
+                        </div>
+                      </div>
+                      
+                      {member.bio && (
+                        <p className="text-sm text-gray-700 mt-2 italic">
+                          "{member.bio}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
-    </>
   );
 };
-
-
-
