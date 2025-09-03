@@ -608,22 +608,12 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
               </label>
               <canvas
                 ref={memberCanvasRef}
-                width={400}
-                height={200}
-                className="border border-gray-300 rounded-lg cursor-crosshair touch-none"
+                width={320}
+                height={160}
+                className="border border-gray-300 rounded-lg cursor-crosshair touch-none w-full max-w-xs"
                 onMouseDown={startDrawing}
                 onTouchStart={startTouchDrawing}
               />
-              <div className="mt-3">
-                <Button
-                  onClick={() => setShowSignatureModal(true)}
-                  variant="outline"
-                  size="sm"
-                  className="w-full sm:w-auto"
-                >
-                  Click here to sign (opens pad)
-                </Button>
-              </div>
             </div>
 
             <div className="flex items-center space-x-3">
