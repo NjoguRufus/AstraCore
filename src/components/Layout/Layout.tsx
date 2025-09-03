@@ -14,7 +14,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, showSidebar = true }) 
   const { isSidebarOpen, closeSidebar } = useSidebar();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <Header />
       <div className="flex relative">
         {/* Mobile sidebar overlay */}
@@ -30,7 +30,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, showSidebar = true }) 
           <div className={`
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             lg:translate-x-0
-            fixed lg:static inset-y-0 left-0 z-50
+            fixed lg:static inset-y-0 left-0 z-50 w-64
             transition-transform duration-300 ease-in-out
           `}>
             <Sidebar />
@@ -40,8 +40,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, showSidebar = true }) 
         {/* Main content */}
         <main className={`
           flex-1 
-          ${showSidebar && user ? 'lg:ml-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'}
-          px-4 sm:px-6 lg:px-8
+          ${showSidebar && user ? 'lg:ml-0' : 'max-w-7xl mx-auto'}
+          w-full
         `}>
           {children}
         </main>

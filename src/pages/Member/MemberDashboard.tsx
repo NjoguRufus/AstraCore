@@ -155,7 +155,7 @@ export const MemberDashboard: React.FC = () => {
 
   return (
     <Layout>
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
         {/* Error Display (hidden by request) */}
 
         {/* Loading States */}
@@ -174,7 +174,7 @@ export const MemberDashboard: React.FC = () => {
         )}
 
         {/* Welcome Header (polished mobile-first layout) */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 md:p-8 text-white">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-4 sm:p-6 md:p-8 text-white">
           <div className="space-y-4">
             <div className="text-center">
               <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.name}!</h1>
@@ -246,58 +246,58 @@ export const MemberDashboard: React.FC = () => {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+          <Card className="text-center p-3 sm:p-4">
             <div className="flex flex-col items-center space-y-2">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-600">{completedProjects.length}</p>
-                <p className="text-sm text-gray-600">Completed</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">{completedProjects.length}</p>
+                <p className="text-xs sm:text-sm text-gray-600">Completed</p>
               </div>
             </div>
           </Card>
 
-          <Card className="text-center">
+          <Card className="text-center p-3 sm:p-4">
             <div className="flex flex-col items-center space-y-2">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <Clock className="w-6 h-6 text-blue-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-blue-600">{inProgressProjects.length}</p>
-                <p className="text-sm text-gray-600">In Progress</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">{inProgressProjects.length}</p>
+                <p className="text-xs sm:text-sm text-gray-600">In Progress</p>
               </div>
             </div>
           </Card>
 
-          <Card className="text-center">
+          <Card className="text-center p-3 sm:p-4">
             <div className="flex flex-col items-center space-y-2">
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-orange-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-orange-600">{upcomingProjects.length}</p>
-                <p className="text-sm text-gray-600">Upcoming</p>
+                <p className="text-xl sm:text-2xl font-bold text-orange-600">{upcomingProjects.length}</p>
+                <p className="text-xs sm:text-sm text-gray-600">Upcoming</p>
               </div>
             </div>
           </Card>
 
-          <Card className="text-center">
+          <Card className="text-center p-3 sm:p-4">
             <div className="flex flex-col items-center space-y-2">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <Award className="w-6 h-6 text-purple-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <Award className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-purple-600">{user?.skills.length || 0}</p>
-                <p className="text-sm text-gray-600">Skills</p>
+                <p className="text-xl sm:text-2xl font-bold text-purple-600">{user?.skills.length || 0}</p>
+                <p className="text-xs sm:text-sm text-gray-600">Skills</p>
               </div>
             </div>
           </Card>
         </div>
 
         {/* Projects and Announcements Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Projects */}
           <Card>
             <div className="flex items-center justify-between mb-4">
@@ -626,7 +626,7 @@ export const MemberDashboard: React.FC = () => {
         </Card>
 
         {/* Skills & Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <Card className="lg:col-span-2">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">My Skills</h2>
             <div className="flex flex-wrap gap-2">

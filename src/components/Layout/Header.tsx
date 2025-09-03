@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useProjectNotifications } from '../../hooks/useProjectNotifications';
 import { useModal } from '../../contexts/ModalContext';
 import { useSidebar } from '../../contexts/SidebarContext';
-import { LogOut, User as UserIcon, Bell, Target, Menu } from 'lucide-react';
+import { LogOut, User as UserIcon, Bell, Menu } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -37,70 +37,71 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
-          <div className="flex items-center space-x-4">
+    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+      <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8">
+        <div className="flex justify-between items-center py-3 sm:py-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Mobile menu button */}
             {user && (
               <button
                 onClick={toggleSidebar}
                 className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label="Toggle menu"
               >
-                <Menu className="w-6 h-6" />
+                <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             )}
             <div className="flex items-center space-x-2">
               <img
                 src="https://imgur.com/T7mH4Ly.png"
                 alt="Astracore Logo"
-                className="w-8 h-8 object-contain"
+                className="w-7 h-7 sm:w-8 sm:h-8 object-contain"
               />
-              <span className="text-xl font-bold text-gray-900">Astracore</span>
+              <span className="text-lg sm:text-xl font-bold text-gray-900">Astracore</span>
             </div>
           </div>
           
           {user && (
-            <div className="flex items-center space-x-4">
-              {/* Project Notifications */}
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Project Notifications - Hidden on very small screens */}
               {user.role !== 'admin' && hasNewNotifications && (
-                <div className="relative">
-                  <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                    <Bell className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-800">
+                <div className="hidden sm:block">
+                  <div className="flex items-center space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-50 rounded-lg border border-blue-200">
+                    <Bell className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
+                    <span className="text-xs sm:text-sm font-medium text-blue-800">
                       {newProjects.length} new project{newProjects.length > 1 ? 's' : ''}
                     </span>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-pulse"></div>
                   </div>
                 </div>
               )}
               
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 sm:space-x-3">
                 {user.photoURL ? (
                   <img
                     src={user.photoURL}
                     alt={user.name}
-                    className="w-8 h-8 rounded-full object-cover"
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <UserIcon className="w-4 h-4 text-gray-600" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                    <UserIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" />
                   </div>
                 )}
                 <div className="hidden sm:block">
                   <p className="text-sm font-medium text-gray-900">{user.name}</p>
                   <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getRoleColor(user.role)}`}>
+                <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs font-medium rounded-full border ${getRoleColor(user.role)}`}>
                   {user.role}
                 </span>
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                className="flex items-center space-x-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
               >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
+                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           )}
