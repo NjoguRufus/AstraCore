@@ -1,18 +1,10 @@
 import { useState, useEffect } from 'react';
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot,
-  DocumentData,
-  Query,
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  query,
   QueryConstraint
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -26,70 +18,63 @@ export const useCollection = <T>(
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const collectionRef = queryConstraints 
-      ? query(collection(db, collectionName), ...queryConstraints)
-      : collection(db, collectionName);
-    
-    try {
-      const unsubscribe = onSnapshot(
-        collectionRef,
-        (snapshot) => {
-          try {
-            const items = snapshot.docs.map(doc => {
-              const data = doc.data();
-              // Convert Firestore Timestamps to Date objects
-              const convertedData = Object.keys(data).reduce((acc, key) => {
-                const value = data[key];
-                if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
-                  // This is a Firestore Timestamp
-                  acc[key] = value.toDate();
-                } else {
-                  acc[key] = value;
-                }
-                return acc;
-              }, {} as any);
-              
-              // Special handling for users collection - map document ID to uid field
-              if (collectionName === 'users') {
-                return {
-                  uid: doc.id,  // Map document ID to uid for users
-                  ...convertedData
-                } as T;
-              }
-              
-              return {
-                id: doc.id,
-                ...convertedData
-              };
-            }) as T[];
-            setData(items);
-            setLoading(false);
-          } catch (processError) {
-            console.error('Error processing snapshot data:', processError);
-            setError(processError as Error);
-            setLoading(false);
+    let isMounted = true;
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const ref = queryConstraints
+          ? query(collection(db, collectionName), ...queryConstraints)
+          : collection(db, collectionName);
+
+        const snapshot = await getDocs(ref);
+        const items = snapshot.docs.map(d => {
+          const raw = d.data();
+          const converted = Object.keys(raw).reduce((acc, key) => {
+            const value = (raw as any)[key];
+            if (value && typeof value === 'object' && 'toDate' in value && typeof (value as any).toDate === 'function') {
+              acc[key] = (value as any).toDate();
+            } else {
+              acc[key] = value;
+            }
+            return acc;
+          }, {} as any);
+
+          if (collectionName === 'users') {
+            return { uid: d.id, ...converted } as T;
           }
-        },
-        (err) => {
-          console.error('Firestore snapshot error:', err);
+          return { id: d.id, ...converted } as T;
+        });
+
+        if (isMounted) {
+          setData(items);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Firestore query error:', err);
+        if (isMounted) {
           setError(err as Error);
           setLoading(false);
         }
-      );
+      }
+    };
 
-      return () => {
-        try {
-          unsubscribe();
-        } catch (unsubError) {
-          console.error('Error unsubscribing from Firestore:', unsubError);
-        }
-      };
-    } catch (setupError) {
-      console.error('Error setting up Firestore listener:', setupError);
-      setError(setupError as Error);
+    // Skip if query constraints are provided but evidently incomplete (e.g., undefined values)
+    const constraintsOk = Array.isArray(queryConstraints)
+      ? queryConstraints.every(Boolean)
+      : true;
+
+    if (constraintsOk) {
+      fetchData();
+    } else {
       setLoading(false);
     }
-  }, [collectionName]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [collectionName, JSON.stringify(queryConstraints || [])]);
 
   return { data, loading, error };
 };
@@ -100,67 +85,53 @@ export const useDocument = <T>(collectionName: string, documentId: string) => {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!documentId) {
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
 
-    const documentRef = doc(db, collectionName, documentId);
-    
-    try {
-      const unsubscribe = onSnapshot(
-        documentRef,
-        (doc) => {
-          try {
-            if (doc.exists()) {
-              const data = doc.data();
-              // Convert Firestore Timestamps to Date objects
-              const convertedData = Object.keys(data).reduce((acc, key) => {
-                const value = data[key];
-                if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
-                  // This is a Firestore Timestamp
-                  acc[key] = value.toDate();
-                } else {
-                  acc[key] = value;
-                }
-                return acc;
-              }, {} as any);
-              
-              // Special handling for users collection - map document ID to uid field
-              if (collectionName === 'users') {
-                setData({ uid: doc.id, ...convertedData } as T);
-              } else {
-                setData({ id: doc.id, ...convertedData } as T);
-              }
+    const run = async () => {
+      if (!documentId) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const ref = doc(db, collectionName, documentId);
+        const snap = await getDoc(ref);
+        if (!isMounted) return;
+
+        if (snap.exists()) {
+          const raw = snap.data();
+          const converted = Object.keys(raw).reduce((acc, key) => {
+            const value = (raw as any)[key];
+            if (value && typeof value === 'object' && 'toDate' in value && typeof (value as any).toDate === 'function') {
+              acc[key] = (value as any).toDate();
             } else {
-              setData(null);
+              acc[key] = value;
             }
-            setLoading(false);
-          } catch (processError) {
-            console.error('Error processing document data:', processError);
-            setError(processError as Error);
-            setLoading(false);
+            return acc;
+          }, {} as any);
+
+          if (collectionName === 'users') {
+            setData({ uid: snap.id, ...converted } as T);
+          } else {
+            setData({ id: snap.id, ...converted } as T);
           }
-        },
-        (err) => {
-          console.error('Firestore document snapshot error:', err);
+        } else {
+          setData(null);
+        }
+        setLoading(false);
+      } catch (err) {
+        console.error('Firestore document query error:', err);
+        if (isMounted) {
           setError(err as Error);
           setLoading(false);
         }
-      );
+      }
+    };
 
-      return () => {
-        try {
-          unsubscribe();
-        } catch (unsubError) {
-          console.error('Error unsubscribing from Firestore document:', unsubError);
-        }
-      };
-    } catch (setupError) {
-      console.error('Error setting up Firestore document listener:', setupError);
-      setError(setupError as Error);
-      setLoading(false);
-    }
+    run();
+    return () => { isMounted = false; };
   }, [collectionName, documentId]);
 
   return { data, loading, error };

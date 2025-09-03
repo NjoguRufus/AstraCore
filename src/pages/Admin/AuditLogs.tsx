@@ -1,1 +1,58 @@
-import React, { useState, useEffect } from "react"; import { useAuth } from "../../contexts/AuthContext"; import { useModal } from "../../contexts/ModalContext"; import { getAuditLogs, AuditLog } from "../../services/firebaseService"; import { Card } from "../../components/UI/Card"; import { Button } from "../../components/UI/Button"; import { LoadingSpinner } from "../../components/UI/LoadingSpinner"; import { Shield, Calendar, Filter, Download, User, Clock, AlertCircle, CheckCircle, Info } from "lucide-react"; const AuditLogs = () => { const { user } = useAuth(); const { showNotification } = useModal(); const [auditLogs, setAuditLogs] = useState([]); const [loading, setLoading] = useState(true); useEffect(() => { loadAuditLogs(); }, []); const loadAuditLogs = async () => { if (!user?.companyId) return; try { setLoading(true); const logs = await getAuditLogs(user.companyId); setAuditLogs(logs); } catch (error) { showNotification({ title: "Error", message: "Failed to load audit logs", type: "error" }); } finally { setLoading(false); } }; if (loading) { return ( <div className="flex justify-center items-center h-64"> <LoadingSpinner /> </div> ); } return ( <div className="space-y-6"> <div className="flex items-center justify-between"> <div> <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1> <p className="text-gray-600">Track all system activities and user actions</p> </div> </div> <Card> <div className="p-6"> <div className="text-center text-gray-500"> {auditLogs.length === 0 ? "No audit logs found" : `${auditLogs.length} audit logs`} </div> </div> </Card> </div> ); }; export default AuditLogs;
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import { useModal } from "../../contexts/ModalContext";
+import { getAuditLogs, AuditLog } from "../../services/firebaseService";
+import { Card } from "../../components/UI/Card";
+import { LoadingSpinner } from "../../components/UI/LoadingSpinner";
+
+export const AuditLogs: React.FC = () => {
+  const { user } = useAuth();
+  const { showNotification } = useModal();
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadAuditLogs();
+  }, []);
+
+  const loadAuditLogs = async () => {
+    if (!user?.companyId) return;
+    try {
+      setLoading(true);
+      const logs = await getAuditLogs(user.companyId);
+      setAuditLogs(logs);
+    } catch (error) {
+      showNotification({ title: "Error", message: "Failed to load audit logs", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
+          <p className="text-gray-600">Track all system activities and user actions</p>
+        </div>
+      </div>
+      <Card>
+        <div className="p-6">
+          <div className="text-center text-gray-500">
+            {auditLogs.length === 0 ? "No audit logs found" : `${auditLogs.length} audit logs`}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+export default AuditLogs;

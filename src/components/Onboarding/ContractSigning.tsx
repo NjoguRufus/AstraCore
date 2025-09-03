@@ -28,11 +28,14 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   const memberCanvasRef = useRef<HTMLCanvasElement>(null);
+  const modalCanvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const memberCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const modalCtxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   useEffect(() => {
     if (memberCanvasRef.current) {
@@ -47,6 +50,21 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
       }
     }
   }, []);
+
+  // Initialize modal canvas context when modal opens
+  useEffect(() => {
+    if (showSignatureModal && modalCanvasRef.current) {
+      const canvas = modalCanvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#000';
+        modalCtxRef.current = ctx;
+      }
+    }
+  }, [showSignatureModal]);
 
   // Cleanup camera stream when component unmounts
   useEffect(() => {
@@ -95,6 +113,14 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
     }
   };
 
+  const clearModalSignature = () => {
+    const canvas = modalCanvasRef.current;
+    const ctx = modalCtxRef.current;
+    if (canvas && ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
   // Touch support for mobile signature drawing
   const startTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault();
@@ -138,6 +164,89 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
     document.addEventListener('touchmove', handleTouchMove as EventListener, { passive: false } as AddEventListenerOptions);
     document.addEventListener('touchend', handleTouchEnd as EventListener);
     document.addEventListener('touchcancel', handleTouchEnd as EventListener);
+  };
+
+  // Modal touch support for signature drawing
+  const startModalTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = e.currentTarget;
+    const ctx = modalCtxRef.current;
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+
+    const handleTouchMove = (moveEvent: TouchEvent) => {
+      moveEvent.preventDefault();
+      const currentCanvas = modalCanvasRef.current;
+      const currentCtx = modalCtxRef.current;
+      if (!currentCanvas || !currentCtx) return;
+      const moveRect = currentCanvas.getBoundingClientRect();
+      const moveTouch = moveEvent.touches[0];
+      if (!moveTouch) return;
+      const moveX = moveTouch.clientX - moveRect.left;
+      const moveY = moveTouch.clientY - moveRect.top;
+      currentCtx.lineTo(moveX, moveY);
+      currentCtx.stroke();
+    };
+
+    const handleTouchEnd = () => {
+      document.removeEventListener('touchmove', handleTouchMove as EventListener);
+      document.removeEventListener('touchend', handleTouchEnd as EventListener);
+      document.removeEventListener('touchcancel', handleTouchEnd as EventListener);
+    };
+
+    document.addEventListener('touchmove', handleTouchMove as EventListener, { passive: false } as AddEventListenerOptions);
+    document.addEventListener('touchend', handleTouchEnd as EventListener);
+    document.addEventListener('touchcancel', handleTouchEnd as EventListener);
+  };
+
+  const startModalMouseDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = e.currentTarget;
+    const ctx = modalCtxRef.current;
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const moveX = moveEvent.clientX - rect.left;
+      const moveY = moveEvent.clientY - rect.top;
+      ctx.lineTo(moveX, moveY);
+      ctx.stroke();
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const saveModalSignature = () => {
+    const canvas = modalCanvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    if (dataUrl && validateSignature(dataUrl)) {
+      setMemberSignature(dataUrl);
+      toast.success('Signature captured!');
+      setShowSignatureModal(false);
+    } else {
+      toast.error('Please provide a valid signature.');
+    }
   };
 
   const captureSignature = (): string => {
@@ -505,6 +614,16 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
                 onMouseDown={startDrawing}
                 onTouchStart={startTouchDrawing}
               />
+              <div className="mt-3">
+                <Button
+                  onClick={() => setShowSignatureModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
+                  Click here to sign (opens pad)
+                </Button>
+              </div>
             </div>
 
             <div className="flex items-center space-x-3">
@@ -668,6 +787,50 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
                   className="flex items-center gap-2"
                 >
                   Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Signature Modal */}
+      {showSignatureModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Sign Here</h3>
+              <button
+                onClick={() => setShowSignatureModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="border border-gray-300 rounded-lg">
+                <canvas
+                  ref={modalCanvasRef}
+                  width={500}
+                  height={250}
+                  className="w-full h-auto cursor-crosshair touch-none"
+                  onMouseDown={startModalMouseDrawing}
+                  onTouchStart={startModalTouchDrawing}
+                />
+              </div>
+              <div className="flex justify-between gap-3">
+                <Button
+                  onClick={clearModalSignature}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Clear
+                </Button>
+                <Button
+                  onClick={saveModalSignature}
+                  className="flex-1"
+                >
+                  Save Signature
                 </Button>
               </div>
             </div>
