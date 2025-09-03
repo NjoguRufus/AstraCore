@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useModal } from '../../contexts/ModalContext';
 import { useCollection } from '../../hooks/useFirestore';
-import { updateProject } from '../../services/firebaseService';
+import { updateProject, completeProject } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
@@ -47,7 +47,12 @@ export const MemberProjects: React.FC = () => {
   const handleStatusUpdate = async (projectId: string, newStatus: 'upcoming' | 'in-progress' | 'completed') => {
     setIsLoading(true);
     try {
-      await updateProject(projectId, { status: newStatus });
+      if (newStatus === 'completed') {
+        // Use the special completion function to track who completed it and when
+        await completeProject(projectId, user?.uid || '');
+      } else {
+        await updateProject(projectId, { status: newStatus });
+      }
     } catch (error) {
       console.error('Error updating project status:', error);
       showNotification({
@@ -197,40 +202,65 @@ export const MemberProjects: React.FC = () => {
                   <span>Due: {formatDate(project.deadline)}</span>
                 </div>
 
+                {/* Completion Timestamp */}
+                {project.status === 'completed' && project.completedAt && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-2 text-sm text-green-700">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>
+                        <strong>Completed:</strong> {formatDate(project.completedAt)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-green-600 mt-1">
+                      ✓ Project completed successfully
+                    </p>
+                  </div>
+                )}
+
                 {/* Status Update Buttons */}
                 <div className="flex flex-wrap gap-2">
-                  {project.status !== 'upcoming' && (
-                    <Button
-                      onClick={() => handleStatusUpdate(project.id, 'upcoming')}
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoading}
-                      className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                    >
-                      Mark Upcoming
-                    </Button>
-                  )}
-                  {project.status !== 'in-progress' && (
-                    <Button
-                      onClick={() => handleStatusUpdate(project.id, 'in-progress')}
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoading}
-                      className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                    >
-                      Start Progress
-                    </Button>
-                  )}
+                  {/* Only show status update buttons if project is NOT completed */}
                   {project.status !== 'completed' && (
-                    <Button
-                      onClick={() => handleStatusUpdate(project.id, 'completed')}
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoading}
-                      className="text-green-600 border-green-200 hover:bg-green-50"
-                    >
-                      Mark Complete
-                    </Button>
+                    <>
+                      {project.status !== 'upcoming' && (
+                        <Button
+                          onClick={() => handleStatusUpdate(project.id, 'upcoming')}
+                          variant="outline"
+                          size="sm"
+                          disabled={isLoading}
+                          className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                        >
+                          Mark Upcoming
+                        </Button>
+                      )}
+                      {project.status !== 'in-progress' && (
+                        <Button
+                          onClick={() => handleStatusUpdate(project.id, 'in-progress')}
+                          variant="outline"
+                          size="sm"
+                          disabled={isLoading}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
+                          Start Progress
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => handleStatusUpdate(project.id, 'completed')}
+                        variant="outline"
+                        size="sm"
+                        disabled={isLoading}
+                        className="text-green-600 border-green-200 hover:bg-green-50"
+                      >
+                        Mark Complete
+                      </Button>
+                    </>
+                  )}
+                  
+                  {/* Show message for completed projects */}
+                  {project.status === 'completed' && (
+                    <div className="w-full text-center text-sm text-gray-500 bg-gray-50 rounded-lg p-2">
+                      Project completed. Contact admin if you need to restart.
+                    </div>
                   )}
                 </div>
               </div>

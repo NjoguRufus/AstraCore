@@ -10,36 +10,80 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function getUserCompanyId() {
+      return getUserData().companyId;
+    }
+    
+    function isCompanyAdmin() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().companyRole == 'company_admin';
+    }
+    
+    function isCompanyMember() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().companyRole in ['company_admin', 'company_member'];
+    }
+    
+    function isSameCompany(resourceCompanyId) {
+      return isCompanyMember() && getUserCompanyId() == resourceCompanyId;
+    }
+    
     function isAdmin() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+             getUserData().isAdmin == true;
+    }
+    
+    // ======================
+    // Company Management
+    // ======================
+    
+    match /companies/{companyId} {
+      // Company admins can manage their own company
+      allow read, write: if isCompanyMember() && getUserCompanyId() == companyId;
+      
+      // System admins can manage all companies
+      allow read, write: if isAdmin();
+    }
+    
+    match /company_settings/{settingId} {
+      // Company admins can manage their company settings
+      allow read, write: if isCompanyMember() && 
+        getUserCompanyId() == resource.data.companyId;
+      
+      // System admins can manage all company settings
+      allow read, write: if isAdmin();
     }
     
     // ======================
     // Core Collections Rules
     // ======================
     
-    // Users Collection - Simplified for Google Sign-In
+    // Users Collection - Multi-tenant with company isolation
     match /users/{userId} {
       // Allow authenticated users to read either:
       // - their own profile by UID, or
       // - any profile whose email matches their signed-in Google email, or
       // - an unclaimed pre-seeded record (uid is not yet set/empty) to support first-time claim by ID code
-      // - other users in the same team (for team collaboration)
+      // - other users in the same company (for company collaboration)
       allow read: if isSignedIn() && (
         request.auth.uid == userId ||
         resource.data.email == request.auth.token.email ||
         resource.data.uid == null || resource.data.uid == '' ||
         (
           exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.team == resource.data.team
+          getUserCompanyId() == resource.data.companyId
         )
       );
       
       // Allow any authenticated user to create their own profile during ID code claim
       // This supports the ID code claim flow where a user creates their profile after Google sign-in
-      // Temporarily more permissive to debug permission issues
       allow create: if isSignedIn();
       
       // Allow users to update their own profile OR perform a safe one-time claim on a pre-seeded record.
@@ -70,22 +114,26 @@ service cloud.firestore {
         )
       );
       
-      // Allow admin to manage all users
+      // Company admins can manage all users in their company
+      allow read, write: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // System admins can manage all users
       allow read, write: if isAdmin();
     }
     
-    // ID Code Verification Collection
+    // ID Code Verification Collection - Multi-tenant
     match /id_codes/{codeId} {
-      // Admins can manage all codes
+      // Company admins can manage codes in their company
+      allow read, write: if isCompanyMember() && 
+        getUserCompanyId() == resource.data.companyId;
+
+      // System admins can manage all codes
       allow read, write: if isAdmin();
 
       // Allow unauthenticated users to verify a specific code by ID
-      // (Only document GETs; listing the collection still requires admin)
       allow get: if true;
 
       // Allow a one-time client-side claim of an unused code
-      // Only the following fields may be updated: used, claimedByUid, claimedByEmail, claimedAt
-      // Must set used=true and claim must match the caller's identity
       allow update: if isSignedIn() &&
                     (resource.data.used == false || resource.data.used == null) &&
                     request.resource.data.used == true &&
@@ -94,82 +142,117 @@ service cloud.firestore {
                     request.resource.data.diff(resource.data).changedKeys().hasOnly(['used', 'claimedByUid', 'claimedByEmail', 'claimedAt']);
     }
     
-    // Teams Collection - SIMPLIFIED
+    // Teams Collection - Multi-tenant
     match /teams/{teamId} {
-      // Admins have full access
+      // Company members can read teams in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can manage teams in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // System admins can manage all teams
       allow read, write: if isAdmin();
-      
-      // ANY signed-in user can read teams
-      allow read: if isSignedIn();
-      
-      // Only admins can modify teams
-      allow create, update, delete: if isAdmin();
     }
     
-    // Allow listing teams collection for active users
-    match /teams {
-      allow list: if isSignedIn();
-    }
-    
-    // Allow listing users collection for team members
-    match /users {
-      allow list: if isSignedIn();
-    }
-    
-    // Projects Collection - SIMPLIFIED
+    // Projects Collection - Multi-tenant
     match /projects/{projectId} {
-      // Admins have full access
-      allow read, write: if isAdmin();
+      // Company members can read projects in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
       
-      // ANY signed-in user can read projects
-      allow read: if isSignedIn();
-      
-      // Users can create projects
-      allow create: if isSignedIn();
+      // Company admins can create and manage all projects in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
       
       // Users can update projects they are assigned to
-      allow update: if isSignedIn() && 
+      allow update: if isCompanyMember() && 
+                   getUserCompanyId() == resource.data.companyId &&
                    request.auth.uid in resource.data.assignedTo;
     }
     
-    // Allow listing projects collection for active users
-    // This is needed for the useCollection hook to work properly
-    match /projects {
-      allow list: if isSignedIn();
+    // Tasks Collection - Multi-tenant
+    match /tasks/{taskId} {
+      // Company members can read tasks in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can create and manage all tasks in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Users can update tasks assigned to them
+      allow update: if isCompanyMember() && 
+                   getUserCompanyId() == resource.data.companyId &&
+                   request.auth.uid == resource.data.assignedTo;
     }
     
-    // Announcements Collection - SIMPLIFIED
+    // Announcements Collection - Multi-tenant
     match /announcements/{announcementId} {
-      // Admins have full access
+      // Company members can read announcements in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can manage announcements in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // System admins can manage all announcements
       allow read, write: if isAdmin();
-      
-      // ANY signed-in user can read announcements
-      allow read: if isSignedIn();
-      
-      // Only admins can create, update, or delete announcements
-      allow create, update, delete: if isAdmin();
     }
     
-    // Allow listing announcements collection for active users
-    match /announcements {
-      allow list: if isSignedIn();
-    }
-    
-    // Wiki Documents Collection - SIMPLIFIED
+    // Wiki Documents Collection - Multi-tenant
     match /wiki_docs/{docId} {
-      // Admins have full access
+      // Company members can read wiki docs in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can manage wiki docs in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // System admins can manage all wiki docs
       allow read, write: if isAdmin();
-      
-      // ANY signed-in user can read wiki docs
-      allow read: if isSignedIn();
-      
-      // Only admins can modify wiki docs
-      allow create, update, delete: if isAdmin();
     }
     
-    // Allow listing wiki docs collection for active users
-    match /wiki_docs {
-      allow list: if isSignedIn();
+    // Notifications Collection - Multi-tenant
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if isSignedIn() && 
+                   getUserCompanyId() == resource.data.companyId &&
+                   request.auth.uid == resource.data.userId;
+      
+      // Company admins can create notifications for users in their company
+      allow create: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if isSignedIn() && 
+                   getUserCompanyId() == resource.data.companyId &&
+                   request.auth.uid == resource.data.userId;
+    }
+    
+    // Audit Logs Collection - Multi-tenant
+    match /audit_logs/{logId} {
+      // Company admins can read audit logs in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // System can create audit logs
+      allow create: if true;
+      
+      // System admins can read all audit logs
+      allow read: if isAdmin();
+    }
+    
+    // Analytics Collection - Multi-tenant
+    match /analytics/{analyticsId} {
+      // Company admins can read analytics in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // System can create analytics
+      allow create: if true;
+      
+      // System admins can read all analytics
+      allow read: if isAdmin();
+    }
+    
+    // Subscriptions Collection - Multi-tenant
+    match /subscriptions/{subscriptionId} {
+      // Company admins can read their company subscription
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // System admins can manage all subscriptions
+      allow read, write: if isAdmin();
     }
     
     // System Collections (Restricted Access)
@@ -177,49 +260,97 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     
-    match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if false; // Only via Cloud Functions
-    }
-    
     // ======================
     // Onboarding Flow Support
     // ======================
     
-    // Contracts Collection - For storing signed contracts
+    // Contracts Collection - Multi-tenant
     match /contracts/{contractId} {
-      // Admins can read and manage all contracts
-      allow read, write: if isAdmin();
+      // Company admins can read and manage all contracts in their company
+      allow read, write: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
       
       // Users can read their own contracts
-      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow read: if isSignedIn() && 
+                   getUserCompanyId() == resource.data.companyId &&
+                   resource.data.uid == request.auth.uid;
       
       // Users can create their own contracts during onboarding
       allow create: if isSignedIn() && 
+                   getUserCompanyId() == resource.data.companyId &&
                    request.resource.data.uid == request.auth.uid;
       
       // Users can update their own contracts (e.g., status updates)
       allow update: if isSignedIn() && 
+                   getUserCompanyId() == resource.data.companyId &&
                    resource.data.uid == request.auth.uid;
-    }
     
-    // Allow listing contracts collection for signed-in users
-    match /contracts {
-      allow list: if isSignedIn();
+      // System admins can manage all contracts
+      allow read, write: if isAdmin();
     }
     
     match /pending_registrations/{docId} {
       // Anyone can create a pending registration
       allow create: if true;
       
-      // Admins can read all pending
+      // Company admins can read pending registrations in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // System admins can read all pending
       allow read: if isAdmin();
       
       // Users can read their own pending registration
       allow read: if isSignedIn() && resource.data.email == request.auth.token.email;
       
-      // Only admins can delete
+      // Company admins can delete pending registrations in their company
+      allow delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // System admins can delete all pending registrations
       allow delete: if isAdmin();
+    }
+    
+    // ======================
+    // Collection Listing Rules
+    // ======================
+    
+    // Allow listing collections for company members
+    match /users {
+      allow list: if isCompanyMember();
+    }
+    
+    match /teams {
+      allow list: if isCompanyMember();
+    }
+    
+    match /projects {
+      allow list: if isCompanyMember();
+    }
+    
+    match /tasks {
+      allow list: if isCompanyMember();
+    }
+    
+    match /announcements {
+      allow list: if isCompanyMember();
+    }
+    
+    match /wiki_docs {
+      allow list: if isCompanyMember();
+    }
+    
+    match /notifications {
+      allow list: if isCompanyMember();
+    }
+    
+    match /audit_logs {
+      allow list: if isCompanyMember();
+    }
+    
+    match /analytics {
+      allow list: if isCompanyMember();
+    }
+    
+    match /contracts {
+      allow list: if isCompanyMember();
     }
     
     // ======================

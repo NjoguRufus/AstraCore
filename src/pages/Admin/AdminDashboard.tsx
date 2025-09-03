@@ -10,7 +10,8 @@ import {
   toggleUserStatus,
   getContractByUserId,
   createTeam,
-  getTeams
+  getTeams,
+  resetCompletedProject
 } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
@@ -67,6 +68,7 @@ export const AdminDashboard: React.FC = () => {
   const [showNewTeamInput, setShowNewTeamInput] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [creatingTeam, setCreatingTeam] = useState(false);
+  const [resettingProject, setResettingProject] = useState<string | null>(null);
 
   const [projectForm, setProjectForm] = useState({
     title: '',
@@ -240,6 +242,27 @@ export const AdminDashboard: React.FC = () => {
         message: 'Failed to update user status. Please try again.',
         type: 'error'
       });
+    }
+  };
+
+  const handleResetProject = async (projectId: string) => {
+    setResettingProject(projectId);
+    try {
+      await resetCompletedProject(projectId);
+      showNotification({
+        title: 'Success',
+        message: 'Project has been reset and can be restarted.',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Error resetting project:', error);
+      showNotification({
+        title: 'Error',
+        message: 'Failed to reset project. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setResettingProject(null);
     }
   };
 
@@ -420,29 +443,17 @@ export const AdminDashboard: React.FC = () => {
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <img
-                src="https://imgur.com/T7mH4Ly.png"
-                alt="Astracore Logo"
-                className="w-16 h-16 object-contain bg-white rounded-xl p-2"
-              />
-              <div>
-                <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-                <p className="text-blue-100 text-lg mt-2">
-                  Manage team members, projects, and system operations
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-2xl font-bold">{!users ? '...' : activeMembers.length}</p>
-                <p className="text-blue-100 text-sm">Active Members</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold">{!users ? '...' : deactivatedMembers.length}</p>
-                <p className="text-blue-100 text-sm">Deactivated</p>
-              </div>
+          <div className="flex items-center space-x-4">
+            <img
+              src="https://imgur.com/T7mH4Ly.png"
+              alt="Astracore Logo"
+              className="w-16 h-16 object-contain bg-white rounded-xl p-2"
+            />
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
+              <p className="text-blue-100 text-xl">
+                Manage team members, projects, and system operations
+              </p>
             </div>
           </div>
         </div>
@@ -489,16 +500,17 @@ export const AdminDashboard: React.FC = () => {
           </Button>
         </div>
 
+        {/* Member Lists */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Active Members */}
-          <Card>
+          <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
                 <UserCheck className="w-5 h-5 text-green-600" />
                 <span>Active Members</span>
               </h2>
-              <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">
-                {activeMembers.length}
+              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                {!users ? '...' : activeMembers.length}
               </span>
             </div>
             <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -506,15 +518,15 @@ export const AdminDashboard: React.FC = () => {
                 <p className="text-center text-gray-500 py-8">Loading members...</p>
               ) : activeMembers.length > 0 ? (
                 activeMembers.map((member) => (
-                  <div key={member.uid} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={member.uid} className="flex items-center justify-between p-4 bg-white rounded-lg border border-green-100 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900">{member.name}</h3>
                       <p className="text-sm text-gray-600">ID: {member.idCode}</p>
-                      <div className="flex items-center space-x-2 mt-1">
+                      <div className="flex items-center space-x-2 mt-2">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getRoleColor(member.role)}`}>
                           {member.role}
                         </span>
-                        <span className="text-xs text-gray-500">{member.team}</span>
+                        <span className="text-xs text-gray-500 bg-green-100 px-2 py-1 rounded-full">{member.team}</span>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -522,7 +534,7 @@ export const AdminDashboard: React.FC = () => {
                         onClick={() => handleViewMemberContract(member.uid)}
                         variant="ghost"
                         size="sm"
-                        className="text-blue-600 hover:text-blue-700"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                         disabled={loadingContract}
                       >
                         <FileText className="w-4 h-4" />
@@ -531,7 +543,7 @@ export const AdminDashboard: React.FC = () => {
                         onClick={() => handleToggleStatus(member.uid, member.status)}
                         variant="ghost"
                         size="sm"
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <PowerOff className="w-4 h-4" />
                       </Button>
@@ -545,14 +557,14 @@ export const AdminDashboard: React.FC = () => {
           </Card>
 
           {/* Deactivated Members */}
-          <Card>
+          <Card className="border-red-200 bg-gradient-to-br from-red-50 to-rose-50">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
                 <UserX className="w-5 h-5 text-red-600" />
                 <span>Deactivated Members</span>
               </h2>
-              <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm">
-                {deactivatedMembers.length}
+              <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+                {!users ? '...' : deactivatedMembers.length}
               </span>
             </div>
             <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -560,15 +572,15 @@ export const AdminDashboard: React.FC = () => {
                 <p className="text-center text-gray-500 py-8">Loading members...</p>
               ) : deactivatedMembers.length > 0 ? (
                 deactivatedMembers.map((member) => (
-                  <div key={member.uid} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg opacity-75">
+                  <div key={member.uid} className="flex items-center justify-between p-4 bg-white rounded-lg border border-red-100 shadow-sm hover:shadow-md transition-shadow opacity-90">
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900">{member.name}</h3>
                       <p className="text-sm text-gray-600">ID: {member.idCode}</p>
-                      <div className="flex items-center space-x-2 mt-1">
+                      <div className="flex items-center space-x-2 mt-2">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getRoleColor(member.role)}`}>
                           {member.role}
                         </span>
-                        <span className="text-xs text-gray-500">{member.team}</span>
+                        <span className="text-xs text-gray-500 bg-red-100 px-2 py-1 rounded-full">{member.team}</span>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -576,7 +588,7 @@ export const AdminDashboard: React.FC = () => {
                         onClick={() => handleViewMemberContract(member.uid)}
                         variant="ghost"
                         size="sm"
-                        className="text-blue-600 hover:text-blue-700"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                         disabled={loadingContract}
                       >
                         <FileText className="w-4 h-4" />
@@ -585,7 +597,7 @@ export const AdminDashboard: React.FC = () => {
                         onClick={() => handleToggleStatus(member.uid, member.status)}
                         variant="ghost"
                         size="sm"
-                        className="text-green-600 hover:text-green-700"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
                       >
                         <Power className="w-4 h-4" />
                       </Button>
@@ -616,6 +628,21 @@ export const AdminDashboard: React.FC = () => {
                 <div key={project.id} className="p-4 border border-gray-200 rounded-lg">
                   <h3 className="font-medium text-gray-900 mb-2">{project.title}</h3>
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">{project.description}</p>
+                  
+                  {/* Completion Timestamp */}
+                  {project.status === 'completed' && project.completedAt && (
+                    <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                      <div className="text-green-700">
+                        <strong>Completed:</strong> {formatDate(project.completedAt)}
+                      </div>
+                      {project.completedBy && (
+                        <div className="text-green-600 mt-1">
+                          By: {users?.find(u => u.uid === project.completedBy)?.name || 'Unknown'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="flex items-center justify-between">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                       project.status === 'completed' 
@@ -630,6 +657,24 @@ export const AdminDashboard: React.FC = () => {
                       {project.assignedTo.length} assigned
                     </span>
                   </div>
+                  
+                  {/* Reset Button for Completed Projects */}
+                  {project.status === 'completed' && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <Button
+                        onClick={() => handleResetProject(project.id)}
+                        variant="outline"
+                        size="sm"
+                        disabled={resettingProject === project.id}
+                        className="w-full text-orange-600 border-orange-200 hover:bg-orange-50"
+                      >
+                        {resettingProject === project.id ? 'Resetting...' : 'Reset Project'}
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-1 text-center">
+                        Allow member to restart this project
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (

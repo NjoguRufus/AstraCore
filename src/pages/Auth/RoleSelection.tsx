@@ -28,7 +28,7 @@ export const RoleSelection: React.FC = () => {
                 className="w-16 h-16 object-contain"
               />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900">Welcome to Astracore</h2>
+            <h2 className="text-3xl font-bold text-gray-900">Welcome To Astraronix </h2>
             <p className="mt-2 text-gray-600">Select your role to continue</p>
           </div>
           

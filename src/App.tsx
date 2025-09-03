@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ModalProvider, useModal } from './contexts/ModalContext';
+import { SidebarProvider } from './contexts/SidebarContext';
 import { LoadingSpinner } from './components/UI/LoadingSpinner';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
@@ -21,6 +22,13 @@ import { ProjectManagement } from './pages/Admin/ProjectManagement';
 import { AnnouncementManagement } from './pages/Admin/AnnouncementManagement';
 import { WikiManagement } from './pages/Admin/WikiManagement';
 import { ContractManagement } from './pages/Admin/ContractManagement';
+import { CompanySettings } from './pages/Admin/CompanySettings';
+import { Projects } from './pages/Admin/Projects';
+import { Tasks } from './pages/Admin/Tasks';
+import { Notifications } from './pages/Admin/Notifications';
+import { AuditLogs } from './pages/Admin/AuditLogs';
+import { AnalyticsDashboard } from './pages/Admin/AnalyticsDashboard';
+import { Billing } from './pages/Admin/Billing';
 
 // Member Pages
 import { MemberDashboard } from './pages/Member/MemberDashboard';
@@ -109,6 +117,62 @@ function AppContent() {
         element={
           <ProtectedRoute requireAdmin>
             <ContractManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/company-settings"
+        element={
+          <ProtectedRoute requireAdmin>
+            <CompanySettings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/projects"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Projects />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/tasks"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Tasks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/notifications"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Notifications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/audit-logs"
+        element={
+          <ProtectedRoute requireAdmin>
+            <AuditLogs />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics"
+        element={
+          <ProtectedRoute requireAdmin>
+            <AnalyticsDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/billing"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Billing />
           </ProtectedRoute>
         }
       />
@@ -244,11 +308,13 @@ function App() {
   return (
     <AuthProvider>
       <ModalProvider>
-        <Router>
-          <AppContent />
-          <Toaster position="top-right" />
-          <ModalComponents />
-        </Router>
+        <SidebarProvider>
+          <Router>
+            <AppContent />
+            <Toaster position="top-right" />
+            <ModalComponents />
+          </Router>
+        </SidebarProvider>
       </ModalProvider>
     </AuthProvider>
   );

@@ -1,8 +1,4 @@
 export interface User {
-  bio: string;
-  bio: string;
-  bio: string;
-  bio: string;
   uid: string;
   name: string;
   email: string;
@@ -20,6 +16,9 @@ export interface User {
   onboardingCompleted?: boolean;
   contractSigned?: boolean;
   contractId?: string;
+  // Multi-tenant fields
+  companyId: string;
+  companyRole: 'company_admin' | 'company_member';
 }
 
 export interface Project {
@@ -33,6 +32,12 @@ export interface Project {
   status: 'upcoming' | 'in-progress' | 'completed';
   deadline: Date;
   createdAt: Date;
+  completedAt?: Date; // Timestamp when project was marked as completed
+  completedBy?: string; // UID of the member who marked it as completed
+  // Multi-tenant fields
+  companyId: string;
+  createdBy: string;
+  updatedAt: Date;
 }
 
 export interface Announcement {
@@ -44,6 +49,9 @@ export interface Announcement {
   targetType?: 'all' | 'team' | 'individual';
   targetTeam?: string;
   targetMembers?: string[];
+  // Multi-tenant fields
+  companyId: string;
+  createdBy: string;
 }
 
 export interface Contract {
@@ -64,6 +72,8 @@ export interface Contract {
   contractVersion: string;
   createdAt: Date;
   updatedAt: Date;
+  // Multi-tenant fields
+  companyId: string;
 }
 
 export interface WikiDoc {
@@ -76,6 +86,8 @@ export interface WikiDoc {
   createdAt: Date;
   updatedAt: Date;
   author: string;
+  // Multi-tenant fields
+  companyId: string;
 }
 
 export interface Badge {
@@ -84,6 +96,8 @@ export interface Badge {
   description: string;
   icon: string;
   color: string;
+  // Multi-tenant fields
+  companyId: string;
 }
 
 export interface OnboardingStep {
@@ -92,6 +106,8 @@ export interface OnboardingStep {
   description: string;
   completed: boolean;
   required: boolean;
+  // Multi-tenant fields
+  companyId: string;
 }
 
 export interface Team {
@@ -102,6 +118,8 @@ export interface Team {
   createdAt: Date;
   createdBy: string;
   isActive: boolean;
+  // Multi-tenant fields
+  companyId: string;
 }
 
 export interface TermsAndConditions {
@@ -110,4 +128,146 @@ export interface TermsAndConditions {
   content: string;
   effectiveDate: Date;
   isActive: boolean;
+  // Multi-tenant fields
+  companyId: string;
+}
+
+// New SaaS-specific interfaces
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  projectId: string;
+  assignedTo: string; // UID of assigned member
+  status: 'pending' | 'in-progress' | 'completed' | 'blocked';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  dueDate?: Date;
+  completedAt?: Date;
+  completedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Multi-tenant fields
+  companyId: string;
+  createdBy: string;
+  estimatedHours?: number;
+  actualHours?: number;
+  tags: string[];
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  slug: string;
+  logo?: string;
+  tagline?: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  domain?: string;
+  plan: 'free' | 'premium' | 'enterprise';
+  maxMembers: number;
+  maxProjects: number;
+  createdAt: Date;
+  updatedAt: Date;
+  ownerId: string;
+  isActive: boolean;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  category: 'project' | 'task' | 'announcement' | 'system';
+  isRead: boolean;
+  createdAt: Date;
+  readAt?: Date;
+  actionUrl?: string;
+  // Multi-tenant fields
+  companyId: string;
+}
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  resourceType: 'user' | 'project' | 'task' | 'announcement' | 'system';
+  resourceId?: string;
+  details: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: Date;
+  // Multi-tenant fields
+  companyId: string;
+}
+
+export interface CompanySettings {
+  id: string;
+  companyId: string;
+  theme: {
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    backgroundColor: string;
+    textColor: string;
+  };
+  branding: {
+    logo?: string;
+    favicon?: string;
+    companyName: string;
+    tagline?: string;
+  };
+  features: {
+    enableNotifications: boolean;
+    enableAuditLogs: boolean;
+    enableAnalytics: boolean;
+    enableCustomDomains: boolean;
+  };
+  notifications: {
+    emailNotifications: boolean;
+    inAppNotifications: boolean;
+    slackWebhook?: string;
+  };
+  updatedAt: Date;
+  updatedBy: string;
+}
+
+export interface Subscription {
+  id: string;
+  companyId: string;
+  plan: 'free' | 'premium' | 'enterprise';
+  status: 'active' | 'canceled' | 'past_due' | 'unpaid';
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  cancelAtPeriodEnd: boolean;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  features: {
+    maxMembers: number;
+    maxProjects: number;
+    maxStorageGB: number;
+    customBranding: boolean;
+    prioritySupport: boolean;
+    advancedAnalytics: boolean;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Analytics {
+  companyId: string;
+  date: string; // YYYY-MM-DD format
+  metrics: {
+    totalMembers: number;
+    activeMembers: number;
+    totalProjects: number;
+    completedProjects: number;
+    totalTasks: number;
+    completedTasks: number;
+    averageTaskCompletionTime: number; // in hours
+    memberActivity: Record<string, number>; // userId -> activity score
+  };
+  createdAt: Date;
 }

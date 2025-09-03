@@ -404,10 +404,19 @@ export const MemberDashboard: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    <span className={`ml-3 inline-flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(project.status)}`}>
-                      {getStatusIcon(project.status)}
-                      <span className="capitalize">{project.status.replace('-', ' ')}</span>
-                    </span>
+                    <div className="ml-3 flex flex-col items-end space-y-2">
+                      <span className={`inline-flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(project.status)}`}>
+                        {getStatusIcon(project.status)}
+                        <span className="capitalize">{project.status.replace('-', ' ')}</span>
+                      </span>
+                      
+                      {/* Show completion timestamp for completed projects */}
+                      {project.status === 'completed' && project.completedAt && (
+                        <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">
+                          ✓ {formatDate(project.completedAt)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

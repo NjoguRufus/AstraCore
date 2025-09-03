@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useCollection } from '../../hooks/useFirestore';
 import { useModal } from '../../contexts/ModalContext';
-import { createProject, updateProject, deleteProject, getUsers } from '../../services/firebaseService';
+import { createProject, updateProject, deleteProject, getUsers, resetCompletedProject } from '../../services/firebaseService';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
@@ -32,6 +32,7 @@ export const ProjectManagement: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [resettingProject, setResettingProject] = useState<string | null>(null);
   
   const [projectForm, setProjectForm] = useState({
     title: '',
@@ -142,6 +143,37 @@ export const ProjectManagement: React.FC = () => {
         message: 'Failed to delete project. Please try again.',
         type: 'error'
       });
+    }
+  };
+
+  const handleResetProject = async (projectId: string) => {
+    const confirmed = await showConfirmation({
+      title: 'Reset Project',
+      message: 'Are you sure you want to reset this completed project? The member will be able to restart it.',
+      type: 'warning',
+      confirmText: 'Reset',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    setResettingProject(projectId);
+    try {
+      await resetCompletedProject(projectId);
+      showNotification({
+        title: 'Success',
+        message: 'Project has been reset and can be restarted.',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Error resetting project:', error);
+      showNotification({
+        title: 'Error',
+        message: 'Failed to reset project. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setResettingProject(null);
     }
   };
 
@@ -322,6 +354,20 @@ export const ProjectManagement: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Completion Timestamp */}
+                {project.status === 'completed' && project.completedAt && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                    <div className="text-sm text-green-700">
+                      <strong>Completed:</strong> {formatDate(project.completedAt)}
+                    </div>
+                    {project.completedBy && (
+                      <div className="text-xs text-green-600 mt-1">
+                        By: {users?.find(u => u.uid === project.completedBy)?.name || 'Unknown'}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {project.team && (
                   <div className="text-sm text-gray-500">
                     <strong>Team:</strong> {project.team}
@@ -334,6 +380,24 @@ export const ProjectManagement: React.FC = () => {
                     Due: {formatDate(project.deadline)} ({getDaysUntilDeadline(project.deadline)})
                   </span>
                 </div>
+
+                {/* Reset Button for Completed Projects */}
+                {project.status === 'completed' && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <Button
+                      onClick={() => handleResetProject(project.id)}
+                      variant="outline"
+                      size="sm"
+                      disabled={resettingProject === project.id}
+                      className="w-full text-orange-600 border-orange-200 hover:bg-orange-50"
+                    >
+                      {resettingProject === project.id ? 'Resetting...' : 'Reset Project'}
+                    </Button>
+                    <p className="text-xs text-gray-500 mt-1 text-center">
+                      Allow member to restart this project
+                    </p>
+                  </div>
+                )}
               </div>
             </Card>
           ))}

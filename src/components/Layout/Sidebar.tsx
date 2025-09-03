@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSidebar } from '../../contexts/SidebarContext';
 import {
   Home,
   Users,
@@ -13,11 +14,13 @@ import {
   Palette,
   BarChart3,
   Bell,
-  User
+  User,
+  X
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
   const { user } = useAuth();
+  const { closeSidebar } = useSidebar();
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -44,6 +47,36 @@ export const Sidebar: React.FC = () => {
       name: 'Projects',
       href: '/admin/projects',
       icon: <Target className="w-5 h-5" />
+    },
+    {
+      name: 'Tasks',
+      href: '/admin/tasks',
+      icon: <FileText className="w-5 h-5" />
+    },
+    {
+      name: 'Analytics',
+      href: '/admin/analytics',
+      icon: <BarChart3 className="w-5 h-5" />
+    },
+    {
+      name: 'Notifications',
+      href: '/admin/notifications',
+      icon: <Bell className="w-5 h-5" />
+    },
+    {
+      name: 'Audit Logs',
+      href: '/admin/audit-logs',
+      icon: <Shield className="w-5 h-5" />
+    },
+    {
+      name: 'Company Settings',
+      href: '/admin/company-settings',
+      icon: <Settings className="w-5 h-5" />
+    },
+    {
+      name: 'Billing',
+      href: '/admin/billing',
+      icon: <Code className="w-5 h-5" />
     },
     {
       name: 'Announcements',
@@ -96,9 +129,20 @@ export const Sidebar: React.FC = () => {
   const navItems = user?.isAdmin ? adminNavItems : memberNavItems;
 
   return (
-    <div className="w-64 bg-gray-50 min-h-screen border-r border-gray-200">
+    <div className="w-64 bg-gray-50 min-h-screen border-r border-gray-200 shadow-lg lg:shadow-none">
       <div className="p-6">
-        <div className="flex items-center space-x-3 mb-8">
+        {/* Mobile close button */}
+        <div className="flex justify-between items-center mb-6 lg:hidden">
+          <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+          <button
+            onClick={closeSidebar}
+            className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="flex items-center space-x-3 mb-8 lg:mb-8">
           {user?.photoURL ? (
             <img
               src={user.photoURL}
@@ -122,6 +166,7 @@ export const Sidebar: React.FC = () => {
             <NavLink
               key={item.name}
               to={item.href}
+              onClick={closeSidebar}
               className={({ isActive }) =>
                 `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                   isActive
@@ -143,6 +188,7 @@ export const Sidebar: React.FC = () => {
             <NavLink
               key={item.name}
               to={item.href}
+              onClick={closeSidebar}
               className={({ isActive }) =>
                 `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                   isActive

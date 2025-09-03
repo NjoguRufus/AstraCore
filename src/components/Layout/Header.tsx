@@ -2,12 +2,14 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProjectNotifications } from '../../hooks/useProjectNotifications';
 import { useModal } from '../../contexts/ModalContext';
-import { LogOut, User as UserIcon, Bell, Target } from 'lucide-react';
+import { useSidebar } from '../../contexts/SidebarContext';
+import { LogOut, User as UserIcon, Bell, Target, Menu } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { user, signOut } = useAuth();
   const { hasNewNotifications, newProjects } = useProjectNotifications();
   const { showConfirmation } = useModal();
+  const { toggleSidebar } = useSidebar();
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -39,6 +41,15 @@ export const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center space-x-4">
+            {/* Mobile menu button */}
+            {user && (
+              <button
+                onClick={toggleSidebar}
+                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+            )}
             <div className="flex items-center space-x-2">
               <img
                 src="https://imgur.com/T7mH4Ly.png"

@@ -95,6 +95,51 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
     }
   };
 
+  // Touch support for mobile signature drawing
+  const startTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = e.currentTarget;
+    const ctx = memberCtxRef.current;
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+
+    const handleTouchMove = (moveEvent: TouchEvent) => {
+      // Prevent the page from scrolling while drawing
+      moveEvent.preventDefault();
+      const currentCanvas = memberCanvasRef.current;
+      const currentCtx = memberCtxRef.current;
+      if (!currentCanvas || !currentCtx) return;
+
+      const moveRect = currentCanvas.getBoundingClientRect();
+      const moveTouch = moveEvent.touches[0];
+      if (!moveTouch) return;
+      const moveX = moveTouch.clientX - moveRect.left;
+      const moveY = moveTouch.clientY - moveRect.top;
+      currentCtx.lineTo(moveX, moveY);
+      currentCtx.stroke();
+    };
+
+    const handleTouchEnd = () => {
+      document.removeEventListener('touchmove', handleTouchMove as EventListener);
+      document.removeEventListener('touchend', handleTouchEnd as EventListener);
+      document.removeEventListener('touchcancel', handleTouchEnd as EventListener);
+    };
+
+    // Use non-passive listener so preventDefault works
+    document.addEventListener('touchmove', handleTouchMove as EventListener, { passive: false } as AddEventListenerOptions);
+    document.addEventListener('touchend', handleTouchEnd as EventListener);
+    document.addEventListener('touchcancel', handleTouchEnd as EventListener);
+  };
+
   const captureSignature = (): string => {
     const canvas = memberCanvasRef.current;
     if (!canvas) {
@@ -456,8 +501,9 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
                 ref={memberCanvasRef}
                 width={400}
                 height={200}
-                className="border border-gray-300 rounded-lg cursor-crosshair"
+                className="border border-gray-300 rounded-lg cursor-crosshair touch-none"
                 onMouseDown={startDrawing}
+                onTouchStart={startTouchDrawing}
               />
             </div>
 
