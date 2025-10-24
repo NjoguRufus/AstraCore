@@ -1,10 +1,6 @@
-// src/utils/contractPDF.ts
-// This file contains two approaches for generating contract PDFs:
-// 1. generateContractPDF: Uses jsPDF to create PDFs with manual styling
-// 2. generateContractPDFFromScreenshot: Takes a screenshot of the HTML and converts it to PDF
-//    This provides better visual fidelity as it captures exactly what the HTML looks like
 import jsPDF from 'jspdf';
 import { Contract } from '../types';
+import { getRoleDisplayName } from './roleMapping';
 
 interface ContractData {
   name: string;
@@ -50,7 +46,7 @@ export async function generateContractPDF(data: ContractData | Contract): Promis
     const createdAtDate = convertTimestamp(contract.createdAt) || new Date();
     contractData = {
       name: contract.memberName,
-      role: contract.memberRole,
+      role: getRoleDisplayName(contract.memberRole), // Convert role code to display name
       email: contract.memberEmail,
       idCode: contract.idCode,
       date: createdAtDate.toLocaleDateString('en-US', {
@@ -62,6 +58,12 @@ export async function generateContractPDF(data: ContractData | Contract): Promis
       signatureImage: contract.memberSignatureUrl || '',
       selfieImage: contract.selfieImageUrl || ''
     };
+    
+    console.log('🔍 Contract PDF generation - Role conversion:', {
+      originalRole: contract.memberRole,
+      convertedRole: getRoleDisplayName(contract.memberRole),
+      finalRole: contractData.role
+    });
   }
 
   // Create new PDF document
@@ -195,7 +197,7 @@ export async function generateContractPDF(data: ContractData | Contract): Promis
     'Each team member agrees to perform their duties responsibly, honestly, and with respect toward the company and clients.',
     'Astraronix Solutions will provide clear guidance, access to needed tools, and agreed compensation for completed work or closed deals.',
     'Both Astraronix and the team member agree to protect all company and client information from unauthorized sharing.',
-    'Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.',
+    'Since Astraronix is a , growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.',
     'Team members are expected to follow Astraronix\'s communication standards and maintain professionalism in all client interactions.',
     'Work created for Astraronix (designs, proposals, content, or code) remains property of Astraronix, but creators may showcase it in their personal portfolios with permission.',
     'This agreement is guided by general Kenyan labor principles, but built on trust and collaboration — not strict legal enforcement.'
@@ -474,7 +476,7 @@ export function generateContractHTML(contract: Contract): string {
 
     <h2>Team Member Information</h2>
     <p><strong>Name:</strong> ${contract.memberName}</p>
-    <p><strong>Role:</strong> ${contract.memberRole}</p>
+    <p><strong>Role:</strong> ${getRoleDisplayName(contract.memberRole)}</p>
     <p><strong>Email:</strong> ${contract.memberEmail}</p>
     <p><strong>ID Code:</strong> ${contract.idCode}</p>
 
@@ -483,7 +485,7 @@ export function generateContractHTML(contract: Contract): string {
         <li>Each team member agrees to perform their duties responsibly, honestly, and with respect toward the company and clients.</li>
         <li>Astraronix Solutions will provide clear guidance, access to needed tools, and agreed compensation for completed work or closed deals.</li>
         <li>Both Astraronix and the team member agree to protect all company and client information from unauthorized sharing.</li>
-        <li>Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</li>
+        <li>Since Astraronix is a , growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</li>
         <li>Team members are expected to follow Astraronix's communication standards and maintain professionalism in all client interactions.</li>
         <li>Work created for Astraronix (designs, proposals, content, or code) remains property of Astraronix, but creators may showcase it in their personal portfolios with permission.</li>
         <li>This agreement is guided by general Kenyan labor principles, but built on trust and collaboration — not strict legal enforcement.</li>

@@ -41,6 +41,20 @@ service cloud.firestore {
     }
     
     // ======================
+    // Development/Testing Helper Functions
+    // ======================
+    
+    function isAuthenticatedUser() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    
+    function hasValidUserDocument() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().uid == request.auth.uid;
+    }
+    
+    // ======================
     // Company Management
     // ======================
     
@@ -50,6 +64,9 @@ service cloud.firestore {
       
       // System admins can manage all companies
       allow read, write: if isAdmin();
+      
+      // Allow authenticated users to read companies (for development)
+      allow read: if isAuthenticatedUser();
     }
     
     match /company_settings/{settingId} {
@@ -59,6 +76,9 @@ service cloud.firestore {
       
       // System admins can manage all company settings
       allow read, write: if isAdmin();
+      
+      // Allow authenticated users to read settings (for development)
+      allow read: if isAuthenticatedUser();
     }
     
     // ======================
@@ -72,6 +92,7 @@ service cloud.firestore {
       // - any profile whose email matches their signed-in Google email, or
       // - an unclaimed pre-seeded record (uid is not yet set/empty) to support first-time claim by ID code
       // - other users in the same company (for company collaboration)
+      // - any user if authenticated (for development)
       allow read: if isSignedIn() && (
         request.auth.uid == userId ||
         resource.data.email == request.auth.token.email ||
@@ -79,7 +100,9 @@ service cloud.firestore {
         (
           exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
           getUserCompanyId() == resource.data.companyId
-        )
+        ) ||
+        // Development: Allow any authenticated user to read any user
+        isAuthenticatedUser()
       );
       
       // Allow any authenticated user to create their own profile during ID code claim
@@ -111,7 +134,9 @@ service cloud.firestore {
               request.resource.data.uid == request.auth.uid
             )
           )
-        )
+        ) ||
+        // Development: Allow any authenticated user to update any user
+        isAuthenticatedUser()
       );
       
       // Company admins can manage all users in their company
@@ -140,6 +165,9 @@ service cloud.firestore {
                     request.resource.data.claimedByUid == request.auth.uid &&
                     request.resource.data.claimedByEmail == request.auth.token.email &&
                     request.resource.data.diff(resource.data).changedKeys().hasOnly(['used', 'claimedByUid', 'claimedByEmail', 'claimedAt']);
+      
+      // Development: Allow authenticated users to read any code
+      allow read: if isAuthenticatedUser();
     }
     
     // Teams Collection - Multi-tenant
@@ -152,6 +180,9 @@ service cloud.firestore {
       
       // System admins can manage all teams
       allow read, write: if isAdmin();
+      
+      // Development: Allow authenticated users to read any team
+      allow read: if isAuthenticatedUser();
     }
     
     // Projects Collection - Multi-tenant
@@ -166,6 +197,12 @@ service cloud.firestore {
       allow update: if isCompanyMember() && 
                    getUserCompanyId() == resource.data.companyId &&
                    request.auth.uid in resource.data.assignedTo;
+      
+      // Development: Allow any authenticated user to read and update projects
+      allow read: if isAuthenticatedUser();
+      allow update: if isAuthenticatedUser() && 
+                   request.auth.uid in resource.data.assignedTo;
+      allow create: if isAuthenticatedUser();
     }
     
     // Tasks Collection - Multi-tenant
@@ -180,6 +217,12 @@ service cloud.firestore {
       allow update: if isCompanyMember() && 
                    getUserCompanyId() == resource.data.companyId &&
                    request.auth.uid == resource.data.assignedTo;
+      
+      // Development: Allow any authenticated user to read and update tasks
+      allow read: if isAuthenticatedUser();
+      allow update: if isAuthenticatedUser() && 
+                   request.auth.uid == resource.data.assignedTo;
+      allow create: if isAuthenticatedUser();
     }
     
     // Announcements Collection - Multi-tenant
@@ -192,6 +235,10 @@ service cloud.firestore {
       
       // System admins can manage all announcements
       allow read, write: if isAdmin();
+      
+      // Development: Allow any authenticated user to read announcements
+      allow read: if isAuthenticatedUser();
+      allow create, update, delete: if isAuthenticatedUser();
     }
     
     // Wiki Documents Collection - Multi-tenant
@@ -204,6 +251,9 @@ service cloud.firestore {
       
       // System admins can manage all wiki docs
       allow read, write: if isAdmin();
+      
+      // Development: Allow any authenticated user to read wiki docs
+      allow read: if isAuthenticatedUser();
     }
     
     // Notifications Collection - Multi-tenant
@@ -220,6 +270,10 @@ service cloud.firestore {
       allow update: if isSignedIn() && 
                    getUserCompanyId() == resource.data.companyId &&
                    request.auth.uid == resource.data.userId;
+      
+      // Development: Allow any authenticated user to read notifications
+      allow read: if isAuthenticatedUser();
+      allow create, update: if isAuthenticatedUser();
     }
     
     // Audit Logs Collection - Multi-tenant
@@ -232,6 +286,9 @@ service cloud.firestore {
       
       // System admins can read all audit logs
       allow read: if isAdmin();
+      
+      // Development: Allow any authenticated user to read audit logs
+      allow read: if isAuthenticatedUser();
     }
     
     // Analytics Collection - Multi-tenant
@@ -244,6 +301,9 @@ service cloud.firestore {
       
       // System admins can read all analytics
       allow read: if isAdmin();
+      
+      // Development: Allow any authenticated user to read analytics
+      allow read: if isAuthenticatedUser();
     }
     
     // Subscriptions Collection - Multi-tenant
@@ -253,11 +313,76 @@ service cloud.firestore {
       
       // System admins can manage all subscriptions
       allow read, write: if isAdmin();
+      
+      // Development: Allow any authenticated user to read subscriptions
+      allow read: if isAuthenticatedUser();
     }
     
     // System Collections (Restricted Access)
     match /system_settings/{settingId} {
       allow read, write: if isAdmin();
+    }
+    
+    // ======================
+    // Sales Collections
+    // ======================
+    
+    // Sales Leads Collection - Multi-tenant
+    match /sales_leads/{leadId} {
+      // Company members can read leads in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can create and manage all leads in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Sales agents can update leads assigned to them
+      allow update: if isCompanyMember() && 
+                   getUserCompanyId() == resource.data.companyId &&
+                   request.auth.uid == resource.data.assignedTo;
+      
+      // Development: Allow any authenticated user to read and update leads
+      allow read: if isAuthenticatedUser();
+      allow update: if isAuthenticatedUser() && 
+                   request.auth.uid == resource.data.assignedTo;
+      allow create: if isAuthenticatedUser();
+    }
+    
+    // Clients Collection - Multi-tenant
+    match /clients/{clientId} {
+      // Company members can read clients in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can create and manage all clients in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Sales agents can update clients assigned to them
+      allow update: if isCompanyMember() && 
+                   getUserCompanyId() == resource.data.companyId &&
+                   request.auth.uid == resource.data.assignedTo;
+      
+      // Development: Allow any authenticated user to read and update clients
+      allow read: if isAuthenticatedUser();
+      allow update: if isAuthenticatedUser() && 
+                   request.auth.uid == resource.data.assignedTo;
+      allow create: if isAuthenticatedUser();
+    }
+    
+    // Sales Commissions Collection - Multi-tenant
+    match /sales_commissions/{commissionId} {
+      // Company members can read commissions in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can create and manage all commissions in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Sales agents can read their own commissions
+      allow read: if isCompanyMember() && 
+                   getUserCompanyId() == resource.data.companyId &&
+                   request.auth.uid == resource.data.salesAgentId;
+      
+      // Development: Allow any authenticated user to read commissions
+      allow read: if isAuthenticatedUser();
+      allow create: if isAuthenticatedUser();
     }
     
     // ======================
@@ -286,6 +411,13 @@ service cloud.firestore {
     
       // System admins can manage all contracts
       allow read, write: if isAdmin();
+      
+      // Development: Allow any authenticated user to read and create contracts
+      allow read: if isAuthenticatedUser();
+      allow create: if isAuthenticatedUser() && 
+                   request.resource.data.uid == request.auth.uid;
+      allow update: if isAuthenticatedUser() && 
+                   resource.data.uid == request.auth.uid;
     }
     
     match /pending_registrations/{docId} {
@@ -306,6 +438,9 @@ service cloud.firestore {
       
       // System admins can delete all pending registrations
       allow delete: if isAdmin();
+      
+      // Development: Allow any authenticated user to read pending registrations
+      allow read: if isAuthenticatedUser();
     }
     
     // ======================
@@ -351,6 +486,71 @@ service cloud.firestore {
     
     match /contracts {
       allow list: if isCompanyMember();
+    }
+    
+    match /sales_leads {
+      allow list: if isCompanyMember();
+    }
+    
+    match /clients {
+      allow list: if isCompanyMember();
+    }
+    
+    match /sales_commissions {
+      allow list: if isCompanyMember();
+    }
+    
+    // Development: Allow listing collections for any authenticated user
+    match /users {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /teams {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /projects {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /tasks {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /announcements {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /wiki_docs {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /notifications {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /audit_logs {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /analytics {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /contracts {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /sales_leads {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /clients {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /sales_commissions {
+      allow list: if isAuthenticatedUser();
     }
     
     // ======================

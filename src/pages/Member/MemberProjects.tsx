@@ -87,9 +87,39 @@ export const MemberProjects: React.FC = () => {
     <Layout>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Projects</h1>
-          <p className="text-gray-600 mt-1">Track and manage your assigned projects</p>
+        <div className="bg-gradient-to-r from-teal-500 to-teal-600 rounded-2xl shadow-lg p-6 text-white">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0 lg:space-x-8">
+            {/* Title Section */}
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl p-3 shadow-lg">
+                <Target className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  My Projects
+                </h1>
+                <p className="text-teal-100 text-sm">
+                  Track and manage your assigned projects
+                </p>
+              </div>
+            </div>
+            
+            {/* Quick Stats */}
+            <div className="flex gap-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-white">{userProjects.length}</div>
+                <div className="text-teal-100 text-xs">Total Projects</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-white">{completedProjects.length}</div>
+                <div className="text-teal-100 text-xs">Completed</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-white">{inProgressProjects.length}</div>
+                <div className="text-teal-100 text-xs">In Progress</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Stats */}

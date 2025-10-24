@@ -5,6 +5,7 @@ import { updateUser, getTeams, createTeam } from '../../services/firebaseService
 import { Team } from '../../types';
 import { uploadToCloudinary } from '../../config/cloudinary';
 import { generateIDCard } from '../../utils/pdf';
+import { QRCodePlaceholder } from '../../components/UI/QRCodePlaceholder';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
@@ -25,19 +26,18 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
+import { getRoleDisplayName } from '../../utils/roleMapping';
 
 export const MemberProfile: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { showNotification } = useModal();
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   
   const [profileData, setProfileData] = useState({
     name: '',
     team: '',
-    role: 'dev' as 'dev' | 'admin' | 'design' | 'cyber' | 'analyst',
-    bio: '',
+    role: 'dev' as 'dev' | 'admin' | 'design' | 'cyber' | 'analyst' | 'sales' | 'marketing' | 'campaign',
     github: '',
     linkedin: '',
     phone: '',
@@ -77,7 +77,6 @@ export const MemberProfile: React.FC = () => {
         name: user.name || '',
         team: user.team || '',
         role: user.role || ('dev' as const),
-        bio: user.bio || '',
         github: user.github || '',
         linkedin: user.linkedin || '',
         phone: user.phone || '',
@@ -97,7 +96,6 @@ export const MemberProfile: React.FC = () => {
           name: user.name || '',
           team: user.team || '',
           role: user.role || ('dev' as const),
-          bio: user.bio || '',
           github: user.github || '',
           linkedin: user.linkedin || '',
           phone: user.phone || '',
@@ -310,7 +308,6 @@ export const MemberProfile: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
     try {
       await updateUser(user.uid, profileData);
       setIsEditing(false);
@@ -330,8 +327,6 @@ export const MemberProfile: React.FC = () => {
         message: 'Failed to update profile. Please try again.',
         type: 'error'
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -374,55 +369,11 @@ export const MemberProfile: React.FC = () => {
   return (
     <Layout>
       <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600 mt-1">Manage your personal information and settings</p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button
-              onClick={handleDownloadID}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download ID Card</span>
-            </Button>
-            {!isEditing ? (
-              <Button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center space-x-2"
-              >
-                <Edit className="w-4 h-4" />
-                <span>Edit Profile</span>
-              </Button>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Button
-                  onClick={resetProfileData}
-                  variant="outline"
-                  className="flex items-center space-x-2"
-                >
-                  <X className="w-4 h-4" />
-                  <span>Cancel</span>
-                </Button>
-                <Button
-                  onClick={handleSaveProfile}
-                  isLoading={isLoading}
-                  className="flex items-center space-x-2"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save Changes</span>
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Card */}
+          {/* Profile Card with ID Card */}
           <Card className="lg:col-span-1">
+            <div className="space-y-6">
+              {/* Profile Photo and Info */}
             <div className="text-center space-y-4">
               <div className="relative inline-block">
                 {user.photoURL ? (
@@ -460,7 +411,7 @@ export const MemberProfile: React.FC = () => {
                 <p className="text-gray-600">{user.email}</p>
                 <div className="flex justify-center mt-2">
                   <span className={`px-3 py-1 text-sm font-medium rounded-full border ${getRoleColor(user.role)}`}>
-                    {user.role}
+                      {getRoleDisplayName(user.role)}
                   </span>
                 </div>
               </div>
@@ -469,13 +420,103 @@ export const MemberProfile: React.FC = () => {
                 <p><strong>Employee ID:</strong> {user.idCode || 'Not assigned'}</p>
                 <p><strong>Team:</strong> {isEditing ? (profileData.team || user.team || 'Not assigned') : (user.team || 'Not assigned')}</p>
                 <p><strong>Joined:</strong> {user.createdAt ? user.createdAt.toLocaleDateString() : 'No date'}</p>
+                </div>
+              </div>
+
+              {/* ID Card Section */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">ID Card</h3>
+                  <Button
+                    onClick={handleDownloadID}
+                    className="bg-[#0B1C48] hover:bg-sky-600 text-white px-3 py-2 rounded-lg font-medium flex items-center space-x-2 text-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download</span>
+                  </Button>
+                </div>
+                
+                {/* ID Card Display */}
+                <div className="relative">
+                  <div className="relative w-full h-48 bg-[#0B1C48] rounded-xl text-white flex flex-col items-center justify-between p-4 shadow-lg">
+                    <div className="absolute inset-0 bg-gradient-to-br from-sky-500/30 to-transparent rounded-xl blur-3xl"></div>
+
+                    {/* Logo */}
+                    <div className="z-10 text-center">
+                      <h1 className="text-sm font-bold tracking-wide">ASTRARONIX</h1>
+                      <p className="text-xs uppercase text-sky-400 mt-1">Innovate. Build. Elevate.</p>
+                    </div>
+
+                    {/* Profile */}
+                    <div className="z-10 relative">
+                      <div className="absolute inset-0 rounded-full bg-sky-400 blur-md opacity-40"></div>
+                      <img
+                        src={user.photoURL || "https://i.pravatar.cc/200"}
+                        alt="profile"
+                        className="relative w-16 h-16 object-cover rounded-full border-2 border-sky-400 shadow-lg"
+                      />
+                    </div>
+
+                    {/* Info */}
+                    <div className="z-10 text-center space-y-1">
+                      <h2 className="text-sm font-semibold">{user.name}</h2>
+                      <p className="text-sky-400 text-xs font-medium uppercase">{user.role}</p>
+                      <p className="text-xs text-gray-300">ID: {user.idCode}</p>
+                    </div>
+
+                    {/* Company Name */}
+                    <div className="z-10 text-center">
+                      <p className="text-xs text-gray-300 uppercase tracking-wide">Astraronix Solutions</p>
+                    </div>
+
+                    {/* QR Code - Bottom Right */}
+                    <div className="absolute bottom-3 right-3 z-10">
+                      <div className="bg-white p-1 rounded">
+                        <QRCodePlaceholder 
+                          value={`https://astraronix.vercel.app/profile/${user.idCode}`} 
+                          size={24}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </Card>
 
           {/* Profile Details */}
           <Card className="lg:col-span-2">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Profile Information</h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Profile Information</h3>
+              <div className="flex items-center space-x-3">
+                {isEditing ? (
+                  <>
+                    <Button
+                      onClick={resetProfileData}
+                      className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Cancel</span>
+                    </Button>
+                    <Button
+                      onClick={handleSaveProfile}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save Changes</span>
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    onClick={() => setIsEditing(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    <span>Edit Profile</span>
+                  </Button>
+                )}
+              </div>
+            </div>
             
             <div className="space-y-6">
               {/* Basic Info */}
@@ -825,23 +866,6 @@ export const MemberProfile: React.FC = () => {
                 </div>
               )}
 
-              {/* Bio */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bio
-                </label>
-                {isEditing ? (
-                  <textarea
-                    value={profileData.bio}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, bio: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Tell us about yourself..."
-                  />
-                ) : (
-                  <p className="text-gray-900">{user.bio || 'No bio added yet'}</p>
-                )}
-              </div>
 
               {/* Contact Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

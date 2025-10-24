@@ -27,6 +27,14 @@ import { MemberDashboard } from './pages/Member/MemberDashboard';
 import { MemberProjects } from './pages/Member/MemberProjects';
 import { MemberProfile } from './pages/Member/MemberProfile';
 
+// Role-specific Dashboard Pages
+import { DashboardIndex } from './pages/dashboard/index';
+import { DeveloperDashboard } from './pages/dashboard/developer';
+import { ContentDashboard } from './pages/dashboard/content';
+import { SalesDashboard } from './pages/dashboard/sales';
+import { CampaignDashboard } from './pages/dashboard/campaign';
+import { FirebaseDiagnostics } from './components/FirebaseDiagnostics';
+
 // Onboarding
 import { OnboardingFlow } from './components/Onboarding/OnboardingFlow';
 import { ContractStatusCheck } from './components/Onboarding/ContractStatusCheck';
@@ -143,12 +151,84 @@ function AppContent() {
           </ProtectedRoute>
         }
       />
+
+      {/* Firebase Diagnostics Route */}
+      <Route
+        path="/diagnostics"
+        element={
+          <ProtectedRoute>
+            <FirebaseDiagnostics />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Role-specific Dashboard Routes */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            {user?.onboardingCompleted || user?.contractSigned ? (
+              <DashboardIndex />
+            ) : (
+              <Navigate to="/onboarding" replace />
+            )}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/developer"
+        element={
+          <ProtectedRoute>
+            {user?.onboardingCompleted || user?.contractSigned ? (
+              <DeveloperDashboard />
+            ) : (
+              <Navigate to="/onboarding" replace />
+            )}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/content"
+        element={
+          <ProtectedRoute>
+            {user?.onboardingCompleted || user?.contractSigned ? (
+              <ContentDashboard />
+            ) : (
+              <Navigate to="/onboarding" replace />
+            )}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/sales"
+        element={
+          <ProtectedRoute>
+            {user?.onboardingCompleted || user?.contractSigned ? (
+              <SalesDashboard />
+            ) : (
+              <Navigate to="/onboarding" replace />
+            )}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/campaign"
+        element={
+          <ProtectedRoute>
+            {user?.onboardingCompleted || user?.contractSigned ? (
+              <CampaignDashboard />
+            ) : (
+              <Navigate to="/onboarding" replace />
+            )}
+          </ProtectedRoute>
+        }
+      />
       {/* Auto-redirect users with contracts to dashboard */}
       <Route
         path="/onboarding"
         element={
           user?.onboardingCompleted || user?.contractSigned ? (
-            <Navigate to="/member/dashboard" replace />
+            <Navigate to="/dashboard" replace />
           ) : (
             <ProtectedRoute>
               <OnboardingFlow />
@@ -162,7 +242,7 @@ function AppContent() {
         path="/check-contract"
         element={
           user?.onboardingCompleted || user?.contractSigned ? (
-            <Navigate to="/member/dashboard" replace />
+            <Navigate to="/dashboard" replace />
           ) : (
             <ProtectedRoute>
               <ContractStatusCheck />
@@ -205,7 +285,7 @@ function AppContent() {
             user.isAdmin ? (
               <Navigate to="/admin/dashboard" replace />
             ) : user.onboardingCompleted || user.contractSigned ? (
-              <Navigate to="/member/dashboard" replace />
+              <Navigate to="/dashboard" replace />
             ) : (
               <Navigate to="/onboarding" replace />
             )

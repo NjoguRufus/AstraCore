@@ -5,19 +5,45 @@ import { db } from "../../config/firebase";
 import { useAuth } from "../../hooks/useAuth";
 import { TermsAcceptance } from "./TermsAcceptance";
 import { ContractSigning } from "./ContractSigning";
+import { WelcomeMessage } from "./WelcomeMessage";
 import { Card } from "../UI/Card";
 import { CheckCircle, FileText, UserCheck, ArrowRight } from "lucide-react";
 import { toast } from "react-hot-toast";
 
-type OnboardingStep = 'terms' | 'contract' | 'complete';
+type OnboardingStep = 'welcome' | 'terms' | 'contract' | 'complete';
 
 export const OnboardingFlow: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>('terms');
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [loading, setLoading] = useState(false);
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
+  // Show loading while user data is being loaded
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your information...</p>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
+    // Debug: Log user data when onboarding starts
+    console.log('🔍 OnboardingFlow - User data:', {
+      user: user ? {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        team: user.team,
+        idCode: user.idCode,
+        onboardingCompleted: user.onboardingCompleted,
+        contractSigned: user.contractSigned
+      } : null
+    });
+
     // Check if user has already completed onboarding
     if (user?.onboardingCompleted || user?.contractSigned) {
       console.log('🚀 User already completed onboarding, redirecting to member dashboard...');
@@ -59,6 +85,10 @@ export const OnboardingFlow: React.FC = () => {
 
     checkExistingContract();
   }, [user, navigate, refreshUser]);
+
+  const handleWelcomeContinue = () => {
+    setCurrentStep('terms');
+  };
 
   const handleTermsAccepted = () => {
     setCurrentStep('contract');
@@ -150,13 +180,29 @@ export const OnboardingFlow: React.FC = () => {
 
   const getStepStatus = (step: OnboardingStep) => {
     if (step === currentStep) return 'current';
-    if (step === 'terms' && currentStep !== 'terms') return 'completed';
+    if (step === 'welcome' && currentStep !== 'welcome') return 'completed';
+    if (step === 'terms' && (currentStep === 'contract' || currentStep === 'complete')) return 'completed';
     if (step === 'contract' && currentStep === 'complete') return 'completed';
     return 'pending';
   };
 
   const renderStepContent = () => {
     switch (currentStep) {
+      case 'welcome':
+        console.log('🔍 OnboardingFlow - Passing data to WelcomeMessage:', {
+          userName: user?.name || user?.displayName || '',
+          teamName: user?.team || 'Astraronix Team',
+          userRole: user?.role || 'dev'
+        });
+        return (
+          <WelcomeMessage
+            userName={user?.name || user?.displayName || ''}
+            teamName={user?.team || 'Astraronix Team'}
+            userRole={user?.role || 'dev'}
+            onContinue={handleWelcomeContinue}
+          />
+        );
+      
       case 'terms':
         return (
           <TermsAcceptance
@@ -323,7 +369,7 @@ export const OnboardingFlow: React.FC = () => {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center space-x-8 py-4">
-            {(['terms', 'contract', 'complete'] as OnboardingStep[]).map((step, index) => (
+            {(['welcome', 'terms', 'contract', 'complete'] as OnboardingStep[]).map((step, index) => (
               <div key={step} className="flex items-center">
                 <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
                   getStepStatus(step) === 'completed' 
@@ -346,12 +392,13 @@ export const OnboardingFlow: React.FC = () => {
                     ? 'text-blue-600'
                     : 'text-gray-500'
                 }`}>
+                  {step === 'welcome' && 'Welcome'}
                   {step === 'terms' && 'Terms & Conditions'}
                   {step === 'contract' && 'Contract Signing'}
                   {step === 'complete' && 'Complete'}
                 </span>
                 
-                {index < 2 && (
+                {index < 3 && (
                   <div className={`ml-8 w-16 h-0.5 ${
                     getStepStatus(step) === 'completed' ? 'bg-green-600' : 'bg-gray-300'
                   }`} />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProjectNotifications } from '../../hooks/useProjectNotifications';
+import { getRoleDisplayName } from '../../utils/roleMapping';
 import { useModal } from '../../contexts/ModalContext';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { LogOut, User as UserIcon, Bell, Menu } from 'lucide-react';
@@ -93,7 +94,7 @@ export const Header: React.FC = () => {
                   <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
                 <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs font-medium rounded-full border ${getRoleColor(user.role)}`}>
-                  {user.role}
+                  {getRoleDisplayName(user.role)}
                 </span>
               </div>
               <button

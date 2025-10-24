@@ -63,7 +63,7 @@ export const Sidebar: React.FC = () => {
   const memberNavItems = [
     {
       name: 'Dashboard',
-      href: '/member/dashboard',
+      href: '/dashboard',
       icon: <Home className="w-5 h-5" />
     },
     {

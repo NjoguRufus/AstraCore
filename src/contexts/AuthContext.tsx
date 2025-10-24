@@ -94,6 +94,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Sync user document with contract status
             const syncedUserData = await syncUserWithContract(firebaseUser.uid, userData);
             
+            console.log('🔍 AuthContext - User data loaded:', {
+              name: syncedUserData.name,
+              email: firebaseUser.email,
+              role: syncedUserData.role,
+              team: syncedUserData.team,
+              idCode: syncedUserData.idCode,
+              onboardingCompleted: syncedUserData.onboardingCompleted,
+              contractSigned: syncedUserData.contractSigned
+            });
+            
             setUser({
               uid: firebaseUser.uid,
               name: syncedUserData.name,
@@ -193,7 +203,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             onboardingCompleted: syncedUserData.onboardingCompleted || false,
             contractSigned: syncedUserData.contractSigned || false,
             contractId: syncedUserData.contractId,
-            companyId: syncedUserData.companyId || undefined
+            companyId: syncedUserData.companyId || undefined,
+            roleOnboardingCompleted: syncedUserData.roleOnboardingCompleted || false
           });
         }
       } catch (error) {

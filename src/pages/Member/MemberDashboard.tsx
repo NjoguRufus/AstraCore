@@ -7,6 +7,8 @@ import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
 import { generateIDCard } from '../../utils/pdf';
+import { generateModernIDCard } from '../../utils/modernIdCard';
+import { IDCardPreview } from '../../components/IDCard/IDCardPreview';
 import { generateContractPDF, generateContractHTML, generateContractPDFFromScreenshot } from '../../utils/contractPdf';
 import { formatDate, getDaysUntilDeadline, getDeadlineColor } from '../../utils/dateUtils';
 import { 
@@ -25,6 +27,7 @@ import {
   FileText
 } from 'lucide-react';
 import { Project, Announcement, User } from '../../types';
+import { getRoleDisplayName } from '../../utils/roleMapping';
 
 export const MemberDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -39,6 +42,7 @@ export const MemberDashboard: React.FC = () => {
   const [userContract, setUserContract] = useState<any>(null);
   const [loadingContract, setLoadingContract] = useState(false);
   const [viewMode, setViewMode] = useState<'simple' | 'html'>('simple');
+  const [showIDCardPreview, setShowIDCardPreview] = useState(false);
   const [showProjectMembersModal, setShowProjectMembersModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
@@ -67,9 +71,20 @@ export const MemberDashboard: React.FC = () => {
   const inProgressProjects = userProjects.filter(p => p.status === 'in-progress');
   const upcomingProjects = userProjects.filter(p => p.status === 'upcoming');
 
-  const handleDownloadID = () => {
+  const handleDownloadID = async () => {
     if (user) {
-      generateIDCard(user);
+      try {
+        await generateModernIDCard({
+          user,
+          profilePhotoUrl: user.photoURL,
+          qrCodeData: `https://astraronix.vercel.app/verify/${user.idCode}`,
+          signatureUrl: userContract?.memberSignatureUrl
+        });
+      } catch (error) {
+        console.error('Error generating modern ID card:', error);
+        // Fallback to basic ID card
+        generateIDCard(user);
+      }
     }
   };
 
@@ -571,7 +586,7 @@ export const MemberDashboard: React.FC = () => {
                                 ? 'bg-orange-100 text-orange-800'
                                 : 'bg-green-100 text-green-800'
                             }`}>
-                              {member.role}
+                              {getRoleDisplayName(member.role)}
                             </span>
                           </div>
                           
@@ -695,6 +710,22 @@ export const MemberDashboard: React.FC = () => {
               >
                 <Target className="w-4 h-4 mr-2" />
                 My Projects
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => setShowIDCardPreview(true)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Preview ID Card
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={handleDownloadID}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download ID Card
               </Button>
               <Button 
                 variant="outline" 
@@ -826,7 +857,7 @@ export const MemberDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                        <p>Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</p>
+                        <p>Since Astraronix is a , growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">5</span>

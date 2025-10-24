@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { User } from '../types';
 
+// Modern luxury + tech hybrid ID card design
 export const generateIDCard = (user: User): void => {
   const pdf = new jsPDF({
     orientation: 'landscape',
@@ -8,40 +9,149 @@ export const generateIDCard = (user: User): void => {
     format: [85, 54] // Credit card size
   });
 
-  // Background
-  pdf.setFillColor(37, 99, 235); // Blue background
-  pdf.rect(0, 0, 85, 54, 'F');
+  const cardWidth = 85;
+  const cardHeight = 54;
 
-  // White content area
-  pdf.setFillColor(255, 255, 255);
-  pdf.rect(5, 5, 75, 44, 'F');
+  // === FRONT LAYOUT ===
+  
+  // Deep Navy background (#0B1C48)
+  pdf.setFillColor(11, 28, 72); // Deep Navy
+  pdf.rect(0, 0, cardWidth, cardHeight, 'F');
 
-  // Company name
-  pdf.setTextColor(37, 99, 235);
-  pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('ASTRACORE', 42.5, 15, { align: 'center' });
+  // Sky Blue gradient overlay for luxury effect
+  pdf.setFillColor(0, 191, 255, 0.1); // Sky Blue with transparency
+  pdf.rect(0, 0, cardWidth, cardHeight, 'F');
 
-  // Employee name
-  pdf.setTextColor(0, 0, 0);
+  // Top Section - Logo and Subtext
+  pdf.setTextColor(255, 255, 255); // White text
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(user.name, 42.5, 25, { align: 'center' });
-
-  // Role and ID
-  pdf.setFontSize(8);
+  pdf.text('ASTRARONIX', cardWidth / 2, 8, { align: 'center' });
+  
+  pdf.setFontSize(6);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`${user.role.toUpperCase()} • ID: ${user.idCode}`, 42.5, 32, { align: 'center' });
+  pdf.text('Innovate. Build. Elevate.', cardWidth / 2, 12, { align: 'center' });
 
-  // Team
-  pdf.text(user.team.toUpperCase(), 42.5, 38, { align: 'center' });
+  // Middle Section - Profile Photo Area (circular with glowing ring)
+  const photoX = cardWidth / 2;
+  const photoY = 22;
+  const photoRadius = 8;
+  
+  // Glowing ring effect (multiple circles with decreasing opacity)
+  pdf.setFillColor(0, 191, 255, 0.3); // Sky Blue glow
+  pdf.circle(photoX, photoY, photoRadius + 2, 'F');
+  pdf.setFillColor(0, 191, 255, 0.2);
+  pdf.circle(photoX, photoY, photoRadius + 1, 'F');
+  pdf.setFillColor(0, 191, 255, 0.1);
+  pdf.circle(photoX, photoY, photoRadius, 'F');
+  
+  // Profile photo placeholder (white circle)
+  pdf.setFillColor(255, 255, 255);
+  pdf.circle(photoX, photoY, photoRadius - 0.5, 'F');
+  
+  // Photo initials or placeholder
+  pdf.setTextColor(11, 28, 72); // Deep Navy text
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'bold');
+  const initials = user.name.split(' ').map(n => n[0]).join('');
+  pdf.text(initials, photoX, photoY + 1, { align: 'center' });
+
+  // Name below photo
+  pdf.setTextColor(255, 255, 255); // White text
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(user.name.toUpperCase(), photoX, photoY + 12, { align: 'center' });
+
+  // Role in Sky Blue
+  pdf.setTextColor(0, 191, 255); // Sky Blue
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(user.role.toUpperCase(), photoX, photoY + 16, { align: 'center' });
+
+  // ID Code
+  pdf.setTextColor(255, 255, 255); // White text
+  pdf.setFontSize(6);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`ID: ${user.idCode}`, photoX, photoY + 20, { align: 'center' });
+
+  // Bottom Section - QR Code placeholder and company info
+  pdf.setTextColor(200, 200, 200); // Silver text
+  pdf.setFontSize(5);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('Astraronix Solutions', cardWidth / 2, cardHeight - 8, { align: 'center' });
+  
+  pdf.setTextColor(150, 150, 150);
+  pdf.setFontSize(4);
+  pdf.text('Internal Use Only', cardWidth / 2, cardHeight - 4, { align: 'center' });
+
+  // QR Code placeholder (small square)
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(cardWidth - 12, cardHeight - 12, 8, 8, 'F');
+  pdf.setTextColor(11, 28, 72);
+  pdf.setFontSize(3);
+  pdf.text('QR', cardWidth - 8, cardHeight - 6, { align: 'center' });
+
+  // Add new page for back layout
+  pdf.addPage();
+
+  // === BACK LAYOUT ===
+  
+  // Deep Navy background
+  pdf.setFillColor(11, 28, 72);
+  pdf.rect(0, 0, cardWidth, cardHeight, 'F');
+
+  // Sky Blue gradient overlay
+  pdf.setFillColor(0, 191, 255, 0.1);
+  pdf.rect(0, 0, cardWidth, cardHeight, 'F');
+
+  // Top Section - Company Contact Info
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('COMPANY CONTACT', cardWidth / 2, 8, { align: 'center' });
+
+  pdf.setFontSize(6);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('Email: astraronixsolutions@gmail.com', cardWidth / 2, 12, { align: 'center' });
+  pdf.text('Website: https://astraronix.vercel.app', cardWidth / 2, 16, { align: 'center' });
+
+  // Middle Section - Emergency/Verification Statement
+  pdf.setTextColor(0, 191, 255); // Sky Blue
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('VERIFICATION', cardWidth / 2, 24, { align: 'center' });
+
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(5);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('If found, please return to', cardWidth / 2, 28, { align: 'center' });
+  pdf.text('Astraronix Solutions HQ', cardWidth / 2, 31, { align: 'center' });
+  pdf.text('or contact support.', cardWidth / 2, 34, { align: 'center' });
+
+  // Bottom Section - Signature area and barcode
+  pdf.setTextColor(200, 200, 200); // Silver text
+  pdf.setFontSize(5);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('Authorized Signature:', 8, cardHeight - 12);
+  
+  // Signature line
+  pdf.setDrawColor(200, 200, 200);
+  pdf.line(8, cardHeight - 10, 25, cardHeight - 10);
+
+  // Barcode placeholder
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(cardWidth - 20, cardHeight - 12, 15, 8, 'F');
+  pdf.setTextColor(11, 28, 72);
+  pdf.setFontSize(3);
+  pdf.text('BARCODE', cardWidth - 12.5, cardHeight - 6, { align: 'center' });
 
   // Footer
-  pdf.setFontSize(6);
-  pdf.setTextColor(100, 100, 100);
-  pdf.text('Internal Use Only', 42.5, 45, { align: 'center' });
+  pdf.setTextColor(150, 150, 150);
+  pdf.setFontSize(4);
+  pdf.text('Astraronix Solutions • Nairobi, Kenya', cardWidth / 2, cardHeight - 2, { align: 'center' });
 
-  pdf.save(`${user.name.replace(' ', '_')}_ID_Card.pdf`);
+  // Save the PDF
+  pdf.save(`${user.name.replace(' ', '_')}_ID_Card_Modern.pdf`);
 };
 
 export const generateContract = (user: User, signatureDataURL?: string): jsPDF => {

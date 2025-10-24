@@ -59,7 +59,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [memberForm, setMemberForm] = useState({
     name: '',
-    role: 'dev' as 'dev' | 'design' | 'cyber' | 'analyst' | 'sales' | 'marketing' | 'campaign',
+    role: 'dev' as 'admin' | 'dev' | 'design' | 'cyber' | 'analyst' | 'sales' | 'marketing' | 'campaign',
     team: '',
     idCode: '',
     status: 'pending' as 'active' | 'deactivated' | 'pending'
@@ -135,7 +135,7 @@ export const AdminDashboard: React.FC = () => {
   
   // Helper function to reset member form
   const resetMemberForm = () => {
-    setMemberForm({ name: '', role: 'dev', team: '', idCode: '', status: 'pending' });
+    setMemberForm({ name: '', role: '' as any, team: '', idCode: '', status: 'pending' });
     setShowNewTeamInput(false);
     setNewTeamName('');
   };
@@ -193,10 +193,25 @@ export const AdminDashboard: React.FC = () => {
 
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!memberForm.name || !memberForm.idCode || !memberForm.team) return;
+    if (!memberForm.name || !memberForm.idCode || !memberForm.team || !memberForm.role) {
+      showNotification({
+        title: 'Validation Error',
+        message: 'Please fill in all required fields including role selection.',
+        type: 'warning'
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log('🔍 Admin creating member with data:', {
+        name: memberForm.name,
+        role: memberForm.role,
+        team: memberForm.team,
+        idCode: memberForm.idCode,
+        status: memberForm.status
+      });
+
       await createUser({
         name: memberForm.name,
         email: '', // Will be filled during registration
@@ -208,7 +223,7 @@ export const AdminDashboard: React.FC = () => {
         linkedin: '',
         phone: '',
         idCode: memberForm.idCode,
-        isAdmin: false,
+        isAdmin: memberForm.role === 'admin',
         status: memberForm.status,
         pendingApproval: memberForm.status === 'pending',
         companyId: '', // Will be set during registration
@@ -800,7 +815,10 @@ export const AdminDashboard: React.FC = () => {
                     value={memberForm.role}
                     onChange={(e) => setMemberForm(prev => ({ ...prev, role: e.target.value as any }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   >
+                    <option value="">Select a role</option>
+                    <option value="admin">Administrator</option>
                     <option value="dev">Developer</option>
                     <option value="design">Content Creator</option>
                     <option value="cyber">Cybersecurity Specialist</option>
@@ -809,6 +827,9 @@ export const AdminDashboard: React.FC = () => {
                     <option value="marketing">Digital Marketing Agent</option>
                     <option value="campaign">Campaign Manager</option>
                   </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    This role will determine the member's dashboard, permissions, and responsibilities
+                  </p>
                 </div>
 
                 <div>
@@ -1672,7 +1693,7 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                        <p>Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</p>
+                        <p>Since Astraronix is a , growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">5</span>

@@ -120,6 +120,15 @@ export const createUser = async (userData: Omit<User, 'uid' | 'createdAt'>) => {
     if (!userData.idCode) {
       throw new Error('idCode is required to create an invitation');
     }
+    
+    console.log('🔍 Admin creating user with data:', {
+      name: userData.name,
+      role: userData.role,
+      team: userData.team,
+      idCode: userData.idCode,
+      status: userData.status
+    });
+    
     await setDoc(doc(db, 'id_codes', userData.idCode), {
       used: false,
       assignedName: userData.name,
@@ -129,6 +138,15 @@ export const createUser = async (userData: Omit<User, 'uid' | 'createdAt'>) => {
       pendingApproval: userData.pendingApproval || false,
       createdAt: new Date()
     }, { merge: true });
+    
+    console.log('✅ ID code created successfully with data:', {
+      idCode: userData.idCode,
+      assignedName: userData.name,
+      assignedTeam: userData.team,
+      assignedRole: userData.role,
+      assignedStatus: userData.status || 'pending'
+    });
+    
     return userData.idCode;
   } catch (error) {
     console.error('Error creating invitation code:', error);
@@ -353,6 +371,156 @@ export const deleteProject = async (projectId: string) => {
     await deleteDoc(doc(db, 'projects', projectId));
   } catch (error) {
     console.error('Error deleting project:', error);
+    throw error;
+  }
+};
+
+// Sales Leads
+export const createSalesLead = async (leadData: Omit<SalesLead, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const docRef = await addDoc(collection(db, 'sales_leads'), {
+      ...leadData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating sales lead:', error);
+    throw error;
+  }
+};
+
+export const getSalesLeads = async (companyId: string): Promise<SalesLead[]> => {
+  try {
+    const q = query(
+      collection(db, 'sales_leads'),
+      where('companyId', '==', companyId),
+      orderBy('createdAt', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+      lastContact: doc.data().lastContact?.toDate(),
+      nextFollowUp: doc.data().nextFollowUp?.toDate()
+    })) as SalesLead[];
+  } catch (error) {
+    console.error('Error getting sales leads:', error);
+    throw error;
+  }
+};
+
+export const updateSalesLead = async (leadId: string, updateData: Partial<SalesLead>) => {
+  try {
+    await updateDoc(doc(db, 'sales_leads', leadId), {
+      ...updateData,
+      updatedAt: new Date()
+    });
+  } catch (error) {
+    console.error('Error updating sales lead:', error);
+    throw error;
+  }
+};
+
+export const deleteSalesLead = async (leadId: string) => {
+  try {
+    await deleteDoc(doc(db, 'sales_leads', leadId));
+  } catch (error) {
+    console.error('Error deleting sales lead:', error);
+    throw error;
+  }
+};
+
+// Clients
+export const createClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const docRef = await addDoc(collection(db, 'clients'), {
+      ...clientData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating client:', error);
+    throw error;
+  }
+};
+
+export const getClients = async (companyId: string): Promise<Client[]> => {
+  try {
+    const q = query(
+      collection(db, 'clients'),
+      where('companyId', '==', companyId),
+      orderBy('createdAt', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date()
+    })) as Client[];
+  } catch (error) {
+    console.error('Error getting clients:', error);
+    throw error;
+  }
+};
+
+export const updateClient = async (clientId: string, updateData: Partial<Client>) => {
+  try {
+    await updateDoc(doc(db, 'clients', clientId), {
+      ...updateData,
+      updatedAt: new Date()
+    });
+  } catch (error) {
+    console.error('Error updating client:', error);
+    throw error;
+  }
+};
+
+export const deleteClient = async (clientId: string) => {
+  try {
+    await deleteDoc(doc(db, 'clients', clientId));
+  } catch (error) {
+    console.error('Error deleting client:', error);
+    throw error;
+  }
+};
+
+// Sales Commissions
+export const createSalesCommission = async (commissionData: Omit<Commission, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const docRef = await addDoc(collection(db, 'sales_commissions'), {
+      ...commissionData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating sales commission:', error);
+    throw error;
+  }
+};
+
+export const getSalesCommissions = async (companyId: string): Promise<Commission[]> => {
+  try {
+    const q = query(
+      collection(db, 'sales_commissions'),
+      where('companyId', '==', companyId),
+      orderBy('createdAt', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+      paidAt: doc.data().paidAt?.toDate()
+    })) as Commission[];
+  } catch (error) {
+    console.error('Error getting sales commissions:', error);
     throw error;
   }
 };

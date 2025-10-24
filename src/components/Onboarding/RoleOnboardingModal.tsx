@@ -74,6 +74,20 @@ export const RoleOnboardingModal: React.FC<RoleOnboardingModalProps> = ({ onClos
       commission: "Management-level compensation with team performance bonuses.",
       icon: <CheckCircle className="w-6 h-6" />,
       color: "text-red-600"
+    },
+    cyber: {
+      title: "Cybersecurity Specialist",
+      description: "You protect our digital assets and ensure security compliance across all systems. Your expertise keeps our data safe.",
+      commission: "Security-focused compensation with compliance bonuses.",
+      icon: <CheckCircle className="w-6 h-6" />,
+      color: "text-orange-600"
+    },
+    analyst: {
+      title: "Data Analyst",
+      description: "You turn data into insights that drive business decisions and growth strategies. Your analysis powers our success.",
+      commission: "Data-driven compensation with insight bonuses.",
+      icon: <Target className="w-6 h-6" />,
+      color: "text-indigo-600"
     }
   };
 
@@ -168,9 +182,20 @@ Your role is crucial in making this vision a reality.`;
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 {currentRole.title}
               </h3>
-              <p className="text-gray-600 text-sm leading-relaxed mb-4">
+              <p className="text-gray-600 text-sm leading-relaxed mb-2">
                 {currentRole.description}
               </p>
+              
+              {/* Team Information */}
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-2 mb-1">
+                  <Users className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Your Team:</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  {user?.team || 'Team assignment pending'}
+                </p>
+              </div>
               
               {/* Commission Info */}
               <Card className="bg-green-50 border-green-200">

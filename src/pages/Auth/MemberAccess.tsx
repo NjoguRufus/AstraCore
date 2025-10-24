@@ -164,10 +164,23 @@ export const MemberAccess: React.FC = () => {
 
       if (codeData?.used !== true) {
         console.log('Claiming new ID code...');
+        console.log('🔍 ID Code Data Retrieved:', {
+          assignedName: codeData?.assignedName,
+          assignedTeam: codeData?.assignedTeam,
+          assignedRole: codeData?.assignedRole,
+          assignedStatus: codeData?.assignedStatus
+        });
+        
         const userRef = doc(db, 'users', userId);
         const derivedName = codeData?.assignedName || currentUser.displayName || '';
         const derivedTeam = codeData?.assignedTeam || '';
         const derivedRole = codeData?.assignedRole || 'dev';
+
+        console.log('🔍 Derived User Data:', {
+          name: derivedName,
+          team: derivedTeam,
+          role: derivedRole
+        });
 
         try {
           console.log('Creating user document...');
@@ -207,17 +220,15 @@ export const MemberAccess: React.FC = () => {
                // Wait a moment for Firestore to propagate the changes
                await new Promise(resolve => setTimeout(resolve, 1000));
                
-               // Verify the user document was created successfully
-               const userDocRef = doc(db, 'users', userId);
-               const userDocSnap = await getDoc(userDocRef);
-               if (!userDocSnap.exists()) {
-                 throw new Error('User document creation failed. Please try again.');
-               }
-               
-               // Refresh the user context to immediately update the UI
+               // Force refresh user context to get updated data
+               console.log('🔄 Refreshing user context after ID code claim...');
                await refreshUser();
                
-               console.log('Successfully claimed ID code');
+               // Wait another moment for context to update
+               await new Promise(resolve => setTimeout(resolve, 1000));
+               
+               console.log('✅ User context refreshed, navigating to onboarding...');
+               navigate('/onboarding');
              } catch (writeError) {
                console.error('Error during batch write:', writeError);
                throw writeError;

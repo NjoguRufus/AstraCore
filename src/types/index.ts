@@ -280,3 +280,200 @@ export interface Analytics {
   };
   createdAt: Date;
 }
+
+// Role-specific interfaces
+export interface DevTask {
+  id: string;
+  title: string;
+  description: string;
+  assignedTo: string; // Developer UID
+  projectId: string;
+  status: 'pending' | 'in-progress' | 'blocked' | 'done';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  deadline?: Date;
+  githubRepo?: string;
+  deploymentLink?: string;
+  bugReports: BugReport[];
+  pullRequests: PullRequest[];
+  featureRequests: FeatureRequest[];
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt?: Date;
+  // Multi-tenant fields
+  companyId: string;
+  createdBy: string;
+}
+
+export interface BugReport {
+  id: string;
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'in-progress' | 'resolved' | 'closed';
+  reportedBy: string;
+  assignedTo?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Multi-tenant fields
+  companyId: string;
+}
+
+export interface PullRequest {
+  id: string;
+  title: string;
+  description: string;
+  githubUrl: string;
+  status: 'open' | 'merged' | 'closed';
+  createdBy: string;
+  createdAt: Date;
+  // Multi-tenant fields
+  companyId: string;
+}
+
+export interface FeatureRequest {
+  id: string;
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  status: 'requested' | 'approved' | 'in-development' | 'completed' | 'rejected';
+  requestedBy: string;
+  createdAt: Date;
+  // Multi-tenant fields
+  companyId: string;
+}
+
+export interface ContentTask {
+  id: string;
+  title: string;
+  description: string;
+  assignedTo: string; // Content Creator UID
+  projectId: string;
+  type: 'banner' | 'thumbnail' | 'post' | 'video' | 'graphic' | 'other';
+  status: 'pending' | 'in-progress' | 'submitted-for-review' | 'approved' | 'revision-needed' | 'completed';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  deadline?: Date;
+  attachments: ContentAttachment[];
+  adminFeedback?: string;
+  performanceMetrics?: ContentPerformance;
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt?: Date;
+  // Multi-tenant fields
+  companyId: string;
+  createdBy: string;
+}
+
+export interface ContentAttachment {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: Date;
+  uploadedBy: string;
+}
+
+export interface ContentPerformance {
+  views?: number;
+  engagement?: number;
+  clicks?: number;
+  conversions?: number;
+  campaignId?: string;
+  lastUpdated: Date;
+}
+
+export interface SalesLead {
+  id: string;
+  clientName: string;
+  company?: string;
+  email: string;
+  phone?: string;
+  source: 'website' | 'referral' | 'social' | 'cold-call' | 'other';
+  status: 'lead' | 'contacted' | 'qualified' | 'proposal-sent' | 'negotiation' | 'closed-won' | 'closed-lost';
+  value?: number;
+  probability: number; // 0-100
+  assignedTo: string; // Sales Agent UID
+  notes: string;
+  lastContact?: Date;
+  nextFollowUp?: Date;
+  contractId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Multi-tenant fields
+  companyId: string;
+  createdBy: string;
+}
+
+export interface Commission {
+  id: string;
+  salesAgentId: string;
+  leadId: string;
+  amount: number;
+  percentage: number;
+  status: 'pending' | 'approved' | 'paid';
+  paidAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  companyId: string;
+  createdBy: string;
+}
+
+export interface Client {
+  id: string;
+  clientName: string;
+  company: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  industry?: string;
+  status: 'active' | 'inactive' | 'prospect';
+  assignedTo: string; // Sales Agent UID
+  notes?: string;
+  lastContact?: Date;
+  nextFollowUp?: Date;
+  contractId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  companyId: string;
+  createdBy: string;
+}
+
+export interface Campaign {
+  id: string;
+  title: string;
+  description: string;
+  objective: string;
+  deadline: Date;
+  status: 'planning' | 'active' | 'paused' | 'completed' | 'cancelled';
+  assignedCreators: string[]; // Content Creator UIDs
+  assignedSalesAgents: string[]; // Sales Agent UIDs
+  budget?: number;
+  metrics: CampaignMetrics;
+  reports: CampaignReport[];
+  createdAt: Date;
+  updatedAt: Date;
+  // Multi-tenant fields
+  companyId: string;
+  createdBy: string;
+}
+
+export interface CampaignMetrics {
+  reach?: number;
+  engagement?: number;
+  clicks?: number;
+  conversions?: number;
+  leads?: number;
+  revenue?: number;
+  lastUpdated: Date;
+}
+
+export interface CampaignReport {
+  id: string;
+  title: string;
+  content: string;
+  period: 'weekly' | 'monthly';
+  metrics: CampaignMetrics;
+  attachments: ContentAttachment[];
+  createdAt: Date;
+  createdBy: string;
+}

@@ -33,7 +33,7 @@ export const MemberManagement: React.FC = () => {
   
   const [memberForm, setMemberForm] = useState({
     name: '',
-    role: 'dev' as 'dev' | 'design' | 'cyber' | 'analyst' | 'admin' | 'sales' | 'marketing' | 'campaign',
+    role: '' as 'dev' | 'design' | 'cyber' | 'analyst' | 'admin' | 'sales' | 'marketing' | 'campaign',
     team: '',
     isAdmin: false
   });
@@ -402,15 +402,17 @@ export const MemberManagement: React.FC = () => {
                     value={memberForm.role}
                     onChange={(e) => setMemberForm(prev => ({ ...prev, role: e.target.value as any }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   >
+                    <option value="">Select a role</option>
+                    <option value="admin">Administrator</option>
                     <option value="dev">Developer</option>
                     <option value="design">Content Creator</option>
-                    <option value="cyber">Cybersecurity</option>
-                    <option value="analyst">Analyst</option>
+                    <option value="cyber">Cybersecurity Specialist</option>
+                    <option value="analyst">Data Analyst</option>
                     <option value="sales">Sales Agent</option>
                     <option value="marketing">Digital Marketing Agent</option>
                     <option value="campaign">Campaign Manager</option>
-                    <option value="admin">Admin</option>
                   </select>
                 </div>
 

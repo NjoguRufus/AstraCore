@@ -4,6 +4,7 @@ import { Card } from "../UI/Card";
 import { FileText, Download, CheckCircle, ArrowLeft, ArrowRight, Camera, RotateCcw, AlertCircle, X } from "lucide-react";
 import { uploadSignatureToCloudinary } from "../../config/cloudinary";
 import { toast } from "react-hot-toast";
+import { getRoleDisplayName } from "../../utils/roleMapping";
 
 interface ContractSigningProps {
   onNext: () => void;
@@ -400,7 +401,7 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
       const contractData = {
         memberName: memberData.name,
         memberEmail: memberData.email,
-        memberRole: memberData.role,
+        memberRole: getRoleDisplayName(memberData.role), // Store human-readable role name
         idCode: memberData.idCode,
         memberSignatureUrl,
         selfieImageUrl,
@@ -410,6 +411,11 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
       };
 
       console.log('📝 Contract data being stored in localStorage:', contractData);
+      console.log('🔍 Role conversion:', {
+        originalRole: memberData.role,
+        convertedRole: getRoleDisplayName(memberData.role),
+        storedRole: contractData.memberRole
+      });
       localStorage.setItem('contractData', JSON.stringify(contractData));
       console.log('💾 Contract data saved to localStorage');
       toast.success('Contract signed successfully!');
@@ -533,7 +539,7 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
                   </div>
                   <div className="flex items-start space-x-3">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                    <p>Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</p>
+                    <p>Since Astraronix is a , growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</p>
                   </div>
                   <div className="flex items-start space-x-3">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">5</span>
