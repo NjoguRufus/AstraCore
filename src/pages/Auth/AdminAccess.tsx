@@ -39,7 +39,6 @@ export const AdminAccess: React.FC = () => {
         photoURL: firebaseUser.photoURL,
         role: 'admin',
         team: 'Administration',
-        skills: [],
         employeeID: 'ADMIN001',
         isAdmin: true,
         createdAt: new Date(),

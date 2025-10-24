@@ -80,11 +80,6 @@ export const Sidebar: React.FC = () => {
 
   const sharedNavItems = [
     {
-      name: 'Skills',
-      href: '/skills',
-      icon: <FileText className="w-5 h-5" />
-    },
-    {
       name: 'Settings',
       href: '/settings',
       icon: <Settings className="w-5 h-5" />

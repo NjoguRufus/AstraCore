@@ -93,7 +93,7 @@ export const RoleOnboardingModal: React.FC<RoleOnboardingModalProps> = ({ onClos
 
   const aboutAstraronix = `About Astraronix
 
-We build digital experiences that empower Kenyan businesses — from car dealerships to tech startups. Our mission is simple: deliver smart, scalable, and beautiful software that drives growth.
+We are a tech company specializing in website development, software solutions, and branding services. Our mission is simple: deliver smart, scalable, and beautiful digital solutions that drive growth for Kenyan businesses.
 
 Company Information:
 • Name: Astraronix Solutions
@@ -140,7 +140,7 @@ Your role is crucial in making this vision a reality.`;
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
-                Welcome to Astraronix
+                Hello again {user.name}
               </h2>
               <p className="text-gray-600 text-sm">
                 Let's get you oriented with your role and our mission

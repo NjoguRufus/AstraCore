@@ -5,7 +5,6 @@ export interface User {
   photoURL?: string;
   role: 'admin' | 'dev' | 'design' | 'cyber' | 'analyst' | 'sales' | 'marketing' | 'campaign';
   team: string;
-  skills: string[];
   github?: string;
   linkedin?: string;
   phone?: string;

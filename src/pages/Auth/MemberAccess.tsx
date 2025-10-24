@@ -193,7 +193,6 @@ export const MemberAccess: React.FC = () => {
             name: derivedName,
             team: derivedTeam,
             role: derivedRole,
-            skills: [],
             isAdmin: false,
             idCode: code,
             status: codeData?.assignedStatus || 'pending',

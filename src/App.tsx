@@ -20,7 +20,6 @@ import { MemberManagement } from './pages/Admin/MemberManagement';
 import { ProjectManagement } from './pages/Admin/ProjectManagement';
 import { AnnouncementManagement } from './pages/Admin/AnnouncementManagement';
 import { ContractManagement } from './pages/Admin/ContractManagement';
-import { Projects } from './pages/Admin/Projects';
 
 // Member Pages
 import { MemberDashboard } from './pages/Member/MemberDashboard';
@@ -41,7 +40,6 @@ import { ContractStatusCheck } from './components/Onboarding/ContractStatusCheck
 import { RoleOnboardingModal } from './components/Onboarding/RoleOnboardingModal';
 
 // Shared Pages
-import { Skills } from './pages/Shared/Skills';
 import { Settings } from './pages/Shared/Settings';
 
 function AppContent() {
@@ -252,18 +250,6 @@ function AppContent() {
       />
 
       {/* Shared Routes */}
-      <Route
-        path="/skills"
-        element={
-          <ProtectedRoute>
-            {user?.onboardingCompleted || user?.contractSigned ? (
-              <Skills />
-            ) : (
-              <Navigate to="/onboarding" replace />
-            )}
-          </ProtectedRoute>
-        }
-      />
       <Route
         path="/settings"
         element={

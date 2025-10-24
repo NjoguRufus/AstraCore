@@ -217,7 +217,6 @@ export const AdminDashboard: React.FC = () => {
         email: '', // Will be filled during registration
         role: memberForm.role,
         team: memberForm.team,
-        skills: [],
         bio: '', // Default empty bio
         github: '',
         linkedin: '',

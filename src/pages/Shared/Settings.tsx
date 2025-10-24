@@ -29,7 +29,6 @@ export const Settings: React.FC = () => {
     },
     privacy: {
       profileVisible: true,
-      skillsVisible: true,
       contactVisible: false
     },
     preferences: {
@@ -258,21 +257,6 @@ export const Settings: React.FC = () => {
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
                       privacy: { ...prev.privacy, profileVisible: e.target.checked }
-                    }))}
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900">Skills Visibility</h3>
-                    <p className="text-sm text-gray-600">Show your skills in the team skills matrix</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.privacy.skillsVisible}
-                    onChange={(e) => setSettings(prev => ({
-                      ...prev,
-                      privacy: { ...prev.privacy, skillsVisible: e.target.checked }
                     }))}
                     className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />

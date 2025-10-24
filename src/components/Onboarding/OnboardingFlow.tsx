@@ -6,6 +6,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { TermsAcceptance } from "./TermsAcceptance";
 import { ContractSigning } from "./ContractSigning";
 import { WelcomeMessage } from "./WelcomeMessage";
+import { RoleOnboardingModal } from "./RoleOnboardingModal";
 import { Card } from "../UI/Card";
 import { CheckCircle, FileText, UserCheck, ArrowRight } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -15,6 +16,7 @@ type OnboardingStep = 'welcome' | 'terms' | 'contract' | 'complete';
 export const OnboardingFlow: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [loading, setLoading] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
   const { user, refreshUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -141,11 +143,11 @@ export const OnboardingFlow: React.FC = () => {
       // Refresh user context to get updated flags
       await refreshUser();
       
-      console.log('🚀 Navigating to /member/dashboard...');
-      navigate('/member/dashboard');
-      
       // Clear localStorage after successful completion
       localStorage.removeItem('contractData');
+      
+      // Show role onboarding modal instead of navigating directly
+      setShowRoleModal(true);
       
     } catch (error) {
       console.error('Error completing onboarding:', error);
@@ -176,6 +178,11 @@ export const OnboardingFlow: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRoleModalClose = () => {
+    setShowRoleModal(false);
+    navigate('/member/dashboard');
   };
 
   const getStepStatus = (step: OnboardingStep) => {
@@ -413,6 +420,11 @@ export const OnboardingFlow: React.FC = () => {
       <div className="max-w-7xl mx-auto py-8">
         {renderStepContent()}
       </div>
+
+      {/* Role Onboarding Modal */}
+      {showRoleModal && (
+        <RoleOnboardingModal onClose={handleRoleModalClose} />
+      )}
     </div>
   );
 };

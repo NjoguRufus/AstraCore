@@ -17,7 +17,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { User, Project, Announcement, WikiDoc, Task, Company, CompanySettings, Notification, AuditLog, Subscription, Analytics } from '../types';
+import { User, Project, Announcement, WikiDoc, Task, Company, CompanySettings, Notification, AuditLog, Subscription, Analytics, ContentTask, ContentAttachment, ContentPerformance } from '../types';
 
 // Generate random ID code
 export const generateIdCode = (): string => {
@@ -1113,6 +1113,229 @@ export const updateSubscription = async (subscriptionId: string, updateData: Par
     });
   } catch (error) {
     console.error('Error updating subscription:', error);
+    throw error;
+  }
+};
+
+// Content Task Management
+export const createContentTask = async (taskData: Omit<ContentTask, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
+  try {
+    const docRef = await addDoc(collection(db, 'content_tasks'), {
+      ...taskData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating content task:', error);
+    throw error;
+  }
+};
+
+export const getContentTasks = async (companyId: string, userId?: string): Promise<ContentTask[]> => {
+  try {
+    let q;
+    if (userId) {
+      q = query(
+        collection(db, 'content_tasks'),
+        where('companyId', '==', companyId),
+        where('assignedTo', '==', userId),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      q = query(
+        collection(db, 'content_tasks'),
+        where('companyId', '==', companyId),
+        orderBy('createdAt', 'desc')
+      );
+    }
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+      deadline: doc.data().deadline?.toDate() || undefined,
+      completedAt: doc.data().completedAt?.toDate() || undefined,
+      performanceMetrics: doc.data().performanceMetrics ? {
+        ...doc.data().performanceMetrics,
+        lastUpdated: doc.data().performanceMetrics.lastUpdated?.toDate() || new Date()
+      } : undefined
+    })) as ContentTask[];
+  } catch (error) {
+    console.error('Error fetching content tasks:', error);
+    throw error;
+  }
+};
+
+export const updateContentTask = async (taskId: string, updates: Partial<ContentTask>): Promise<void> => {
+  try {
+    const taskRef = doc(db, 'content_tasks', taskId);
+    await updateDoc(taskRef, {
+      ...updates,
+      updatedAt: new Date()
+    });
+  } catch (error) {
+    console.error('Error updating content task:', error);
+    throw error;
+  }
+};
+
+export const deleteContentTask = async (taskId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, 'content_tasks', taskId));
+  } catch (error) {
+    console.error('Error deleting content task:', error);
+    throw error;
+  }
+};
+
+export const addContentAttachment = async (taskId: string, attachment: ContentAttachment): Promise<void> => {
+  try {
+    const taskRef = doc(db, 'content_tasks', taskId);
+    const taskDoc = await getDoc(taskRef);
+    
+    if (taskDoc.exists()) {
+      const currentAttachments = taskDoc.data().attachments || [];
+      await updateDoc(taskRef, {
+        attachments: [...currentAttachments, attachment],
+        updatedAt: new Date()
+      });
+    }
+  } catch (error) {
+    console.error('Error adding content attachment:', error);
+    throw error;
+  }
+};
+
+export const updateContentPerformance = async (taskId: string, performanceMetrics: ContentPerformance): Promise<void> => {
+  try {
+    const taskRef = doc(db, 'content_tasks', taskId);
+    await updateDoc(taskRef, {
+      performanceMetrics: {
+        ...performanceMetrics,
+        lastUpdated: new Date()
+      },
+      updatedAt: new Date()
+    });
+  } catch (error) {
+    console.error('Error updating content performance:', error);
+    throw error;
+  }
+};
+
+// Content Performance Analytics
+export const getContentPerformanceAnalytics = async (companyId: string, userId?: string, days: number = 30): Promise<{
+  totalTasks: number;
+  completedTasks: number;
+  averageCompletionTime: number;
+  totalViews: number;
+  totalEngagement: number;
+  totalClicks: number;
+  totalConversions: number;
+  topPerformingContent: ContentTask[];
+  performanceByType: Record<string, { count: number; avgViews: number; avgEngagement: number }>;
+}> => {
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    let q;
+    if (userId) {
+      q = query(
+        collection(db, 'content_tasks'),
+        where('companyId', '==', companyId),
+        where('assignedTo', '==', userId),
+        where('createdAt', '>=', startDate),
+        where('createdAt', '<=', endDate),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      q = query(
+        collection(db, 'content_tasks'),
+        where('companyId', '==', companyId),
+        where('createdAt', '>=', startDate),
+        where('createdAt', '<=', endDate),
+        orderBy('createdAt', 'desc')
+      );
+    }
+    
+    const querySnapshot = await getDocs(q);
+    const tasks = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+      deadline: doc.data().deadline?.toDate() || undefined,
+      completedAt: doc.data().completedAt?.toDate() || undefined,
+      performanceMetrics: doc.data().performanceMetrics ? {
+        ...doc.data().performanceMetrics,
+        lastUpdated: doc.data().performanceMetrics.lastUpdated?.toDate() || new Date()
+      } : undefined
+    })) as ContentTask[];
+    
+    // Calculate analytics
+    const completedTasks = tasks.filter(t => t.status === 'completed');
+    const tasksWithPerformance = tasks.filter(t => t.performanceMetrics);
+    
+    let totalCompletionTime = 0;
+    let completedTasksWithTime = 0;
+    
+    completedTasks.forEach(task => {
+      if (task.completedAt && task.createdAt) {
+        const completionTime = task.completedAt.getTime() - task.createdAt.getTime();
+        totalCompletionTime += completionTime;
+        completedTasksWithTime++;
+      }
+    });
+    
+    const averageCompletionTime = completedTasksWithTime > 0 
+      ? totalCompletionTime / (completedTasksWithTime * 3600000) // Convert to hours
+      : 0;
+    
+    const totalViews = tasksWithPerformance.reduce((sum, t) => sum + (t.performanceMetrics?.views || 0), 0);
+    const totalEngagement = tasksWithPerformance.reduce((sum, t) => sum + (t.performanceMetrics?.engagement || 0), 0);
+    const totalClicks = tasksWithPerformance.reduce((sum, t) => sum + (t.performanceMetrics?.clicks || 0), 0);
+    const totalConversions = tasksWithPerformance.reduce((sum, t) => sum + (t.performanceMetrics?.conversions || 0), 0);
+    
+    // Top performing content (by views)
+    const topPerformingContent = tasksWithPerformance
+      .sort((a, b) => (b.performanceMetrics?.views || 0) - (a.performanceMetrics?.views || 0))
+      .slice(0, 5);
+    
+    // Performance by type
+    const performanceByType: Record<string, { count: number; avgViews: number; avgEngagement: number }> = {};
+    tasksWithPerformance.forEach(task => {
+      if (!performanceByType[task.type]) {
+        performanceByType[task.type] = { count: 0, avgViews: 0, avgEngagement: 0 };
+      }
+      performanceByType[task.type].count++;
+      performanceByType[task.type].avgViews += task.performanceMetrics?.views || 0;
+      performanceByType[task.type].avgEngagement += task.performanceMetrics?.engagement || 0;
+    });
+    
+    // Calculate averages
+    Object.keys(performanceByType).forEach(type => {
+      const data = performanceByType[type];
+      data.avgViews = data.count > 0 ? data.avgViews / data.count : 0;
+      data.avgEngagement = data.count > 0 ? data.avgEngagement / data.count : 0;
+    });
+    
+    return {
+      totalTasks: tasks.length,
+      completedTasks: completedTasks.length,
+      averageCompletionTime,
+      totalViews,
+      totalEngagement,
+      totalClicks,
+      totalConversions,
+      topPerformingContent,
+      performanceByType
+    };
+  } catch (error) {
+    console.error('Error fetching content performance analytics:', error);
     throw error;
   }
 };

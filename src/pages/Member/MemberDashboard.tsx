@@ -8,7 +8,7 @@ import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
 import { generateIDCard } from '../../utils/pdf';
 import { generateModernIDCard } from '../../utils/modernIdCard';
-import { IDCardPreview } from '../../components/IDCard/IDCardPreview';
+import { UnifiedIDCard } from '../../components/IDCard/UnifiedIDCard';
 import { generateContractPDF, generateContractHTML, generateContractPDFFromScreenshot } from '../../utils/contractPdf';
 import { formatDate, getDaysUntilDeadline, getDeadlineColor } from '../../utils/dateUtils';
 import { 
@@ -319,18 +319,6 @@ export const MemberDashboard: React.FC = () => {
               </div>
             </div>
           </Card>
-
-          <Card className="text-center p-3 sm:p-4">
-            <div className="flex flex-col items-center space-y-2">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <Award className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-xl sm:text-2xl font-bold text-purple-600">{user?.skills.length || 0}</p>
-                <p className="text-xs sm:text-sm text-gray-600">Skills</p>
-              </div>
-            </div>
-          </Card>
         </div>
 
         {/* Projects and Announcements Side by Side */}
@@ -600,7 +588,7 @@ export const MemberDashboard: React.FC = () => {
                             <span className="flex items-center space-x-1">
                               <Award className="w-3 h-3" />
                               <span>
-                                {member.skills?.length || 0} skills
+                                {member.role}
                               </span>
                             </span>
                             <span className={`flex items-center space-x-1 ${
@@ -662,31 +650,10 @@ export const MemberDashboard: React.FC = () => {
           )}
         </Card>
 
-        {/* Skills & Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <Card className="lg:col-span-2">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">My Skills</h2>
-            <div className="flex flex-wrap gap-2">
-              {user?.skills?.map((skill) => (
-                <span
-                  key={skill}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
-                >
-                  {skill}
-                </span>
-              ))}
-              {(!user?.skills || user.skills.length === 0) && (
-                <div className="text-center py-4">
-                  <Award className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500">No skills added yet.</p>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="space-y-3">
+        {/* Quick Actions */}
+        <Card>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <div className="space-y-3">
               <Button 
                 variant="outline" 
                 className="w-full justify-start"
@@ -739,9 +706,8 @@ export const MemberDashboard: React.FC = () => {
             </div>
           </Card>
         </div>
-      </div>
 
-      {/* Contract Modal */}
+        {/* Contract Modal */}
       {showContractModal && userContract && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -1022,7 +988,7 @@ export const MemberDashboard: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-2">
                           <Award className="w-4 h-4" />
-                          <span>{member.skills?.length || 0} skills</span>
+                          <span>Role: {member.role}</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Target className="w-4 h-4" />
