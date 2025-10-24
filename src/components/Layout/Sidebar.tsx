@@ -49,44 +49,14 @@ export const Sidebar: React.FC = () => {
       icon: <Target className="w-5 h-5" />
     },
     {
-      name: 'Tasks',
-      href: '/admin/tasks',
-      icon: <FileText className="w-5 h-5" />
-    },
-    {
-      name: 'Analytics',
-      href: '/admin/analytics',
-      icon: <BarChart3 className="w-5 h-5" />
-    },
-    {
-      name: 'Notifications',
-      href: '/admin/notifications',
-      icon: <Bell className="w-5 h-5" />
-    },
-    {
-      name: 'Audit Logs',
-      href: '/admin/audit-logs',
-      icon: <Shield className="w-5 h-5" />
-    },
-    {
-      name: 'Company Settings',
-      href: '/admin/company-settings',
-      icon: <Settings className="w-5 h-5" />
-    },
-    {
-      name: 'Billing',
-      href: '/admin/billing',
-      icon: <Code className="w-5 h-5" />
-    },
-    {
       name: 'Announcements',
       href: '/admin/announcements',
       icon: <Bell className="w-5 h-5" />
     },
     {
-      name: 'Wiki Management',
-      href: '/admin/wiki',
-      icon: <BookOpen className="w-5 h-5" />
+      name: 'Contracts',
+      href: '/admin/contracts',
+      icon: <FileText className="w-5 h-5" />
     }
   ];
 
@@ -109,11 +79,6 @@ export const Sidebar: React.FC = () => {
   ];
 
   const sharedNavItems = [
-    {
-      name: 'Wiki',
-      href: '/wiki',
-      icon: <BookOpen className="w-5 h-5" />
-    },
     {
       name: 'Skills',
       href: '/skills',

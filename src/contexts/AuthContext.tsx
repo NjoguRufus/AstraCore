@@ -11,6 +11,8 @@ interface AuthContextType {
   isAdmin: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  showRoleOnboarding: boolean;
+  setShowRoleOnboarding: (show: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +28,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRoleOnboarding, setShowRoleOnboarding] = useState(false);
 
   // Function to sync user document with contract status
   const syncUserWithContract = async (uid: string, userData: any) => {
@@ -71,11 +74,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (userDoc.exists()) {
             const userData = userDoc.data();
             
-            // Check if user is deactivated
+            // Check if user is deactivated or pending
             if (userData.status === 'deactivated') {
               await firebaseSignOut(auth);
               setUser(null);
               alert('Your account is deactivated. Contact admin.');
+              setLoading(false);
+              return;
+            }
+
+            if (userData.status === 'pending') {
+              await firebaseSignOut(auth);
+              setUser(null);
+              alert('Your account is pending approval. Please wait for admin approval.');
               setLoading(false);
               return;
             }
@@ -100,8 +111,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               createdAt: syncedUserData.createdAt?.toDate() || new Date(),
               onboardingCompleted: syncedUserData.onboardingCompleted || false,
               contractSigned: syncedUserData.contractSigned || false,
-              contractId: syncedUserData.contractId
+              contractId: syncedUserData.contractId,
+              companyId: syncedUserData.companyId || undefined,
+              roleOnboardingCompleted: syncedUserData.roleOnboardingCompleted || false
             });
+
+            // Check if user needs role onboarding
+            if (!syncedUserData.roleOnboardingCompleted && syncedUserData.status === 'active') {
+              setShowRoleOnboarding(true);
+            }
           } else {
             // If user doc doesn't exist but we're in the middle of code-claim onboarding,
             // do not sign out. Create a lightweight session user so the UI can proceed.
@@ -123,7 +141,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 status: 'active',
                 createdAt: new Date(),
                 onboardingCompleted: false,
-                contractSigned: false
+                contractSigned: false,
+                companyId: undefined
               });
             } else {
               // Not onboarding: clear session
@@ -173,7 +192,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             createdAt: syncedUserData.createdAt?.toDate() || new Date(),
             onboardingCompleted: syncedUserData.onboardingCompleted || false,
             contractSigned: syncedUserData.contractSigned || false,
-            contractId: syncedUserData.contractId
+            contractId: syncedUserData.contractId,
+            companyId: syncedUserData.companyId || undefined
           });
         }
       } catch (error) {
@@ -196,7 +216,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     isAdmin: user?.isAdmin || false,
     signOut,
-    refreshUser
+    refreshUser,
+    showRoleOnboarding,
+    setShowRoleOnboarding
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

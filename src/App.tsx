@@ -7,7 +7,6 @@ import { LoadingSpinner } from './components/UI/LoadingSpinner';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
 import ConfirmationModal from './components/UI/ConfirmationModal';
-import NotificationModal from './components/UI/NotificationModal';
 
 // Auth Pages
 import { RoleSelection } from './pages/Auth/RoleSelection';
@@ -20,15 +19,8 @@ import { AdminDashboard } from './pages/Admin/AdminDashboard';
 import { MemberManagement } from './pages/Admin/MemberManagement';
 import { ProjectManagement } from './pages/Admin/ProjectManagement';
 import { AnnouncementManagement } from './pages/Admin/AnnouncementManagement';
-import { WikiManagement } from './pages/Admin/WikiManagement';
 import { ContractManagement } from './pages/Admin/ContractManagement';
-import { CompanySettings } from './pages/Admin/CompanySettings';
 import { Projects } from './pages/Admin/Projects';
-import { Tasks } from './pages/Admin/Tasks';
-import { Notifications } from './pages/Admin/Notifications';
-import { AuditLogs } from './pages/Admin/AuditLogs';
-import { AnalyticsDashboard } from './pages/Admin/AnalyticsDashboard';
-import { Billing } from './pages/Admin/Billing';
 
 // Member Pages
 import { MemberDashboard } from './pages/Member/MemberDashboard';
@@ -38,14 +30,14 @@ import { MemberProfile } from './pages/Member/MemberProfile';
 // Onboarding
 import { OnboardingFlow } from './components/Onboarding/OnboardingFlow';
 import { ContractStatusCheck } from './components/Onboarding/ContractStatusCheck';
+import { RoleOnboardingModal } from './components/Onboarding/RoleOnboardingModal';
 
 // Shared Pages
-import { Wiki } from './pages/Shared/Wiki';
 import { Skills } from './pages/Shared/Skills';
 import { Settings } from './pages/Shared/Settings';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, showRoleOnboarding, setShowRoleOnboarding } = useAuth();
 
   if (loading) {
     return (
@@ -56,7 +48,8 @@ function AppContent() {
   }
 
   return (
-    <Routes>
+    <>
+      <Routes>
       {/* Public Routes */}
       <Route path="/auth/role-selection" element={<RoleSelection />} />
       <Route path="/auth/admin-access" element={<AdminAccess />} />
@@ -105,74 +98,10 @@ function AppContent() {
         }
       />
       <Route
-        path="/admin/wiki"
-        element={
-          <ProtectedRoute requireAdmin>
-            <WikiManagement />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/admin/contracts"
         element={
           <ProtectedRoute requireAdmin>
             <ContractManagement />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/company-settings"
-        element={
-          <ProtectedRoute requireAdmin>
-            <CompanySettings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/projects"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Projects />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/tasks"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Tasks />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/notifications"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Notifications />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/audit-logs"
-        element={
-          <ProtectedRoute requireAdmin>
-            <AuditLogs />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/analytics"
-        element={
-          <ProtectedRoute requireAdmin>
-            <AnalyticsDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/billing"
-        element={
-          <ProtectedRoute requireAdmin>
-            <Billing />
           </ProtectedRoute>
         }
       />
@@ -244,18 +173,6 @@ function AppContent() {
 
       {/* Shared Routes */}
       <Route
-        path="/wiki"
-        element={
-          <ProtectedRoute>
-            {user?.onboardingCompleted || user?.contractSigned ? (
-              <Wiki />
-            ) : (
-              <Navigate to="/onboarding" replace />
-            )}
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/skills"
         element={
           <ProtectedRoute>
@@ -301,6 +218,12 @@ function AppContent() {
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+
+      {/* Role Onboarding Modal */}
+      {showRoleOnboarding && (
+        <RoleOnboardingModal onClose={() => setShowRoleOnboarding(false)} />
+      )}
+    </>
   );
 }
 
@@ -322,7 +245,7 @@ function App() {
 
 // ModalComponents component that uses the modal context
 const ModalComponents: React.FC = () => {
-  const { confirmationModal, notificationModal, closeConfirmation, closeNotification } = useModal();
+  const { confirmationModal, closeConfirmation } = useModal();
   
   return (
     <>
@@ -335,14 +258,6 @@ const ModalComponents: React.FC = () => {
         type={confirmationModal.type}
         onConfirm={confirmationModal.onConfirm || closeConfirmation}
         onCancel={confirmationModal.onCancel || closeConfirmation}
-      />
-      <NotificationModal
-        isOpen={notificationModal.isOpen}
-        title={notificationModal.title}
-        message={notificationModal.message}
-        type={notificationModal.type}
-        duration={notificationModal.duration}
-        onClose={closeNotification}
       />
     </>
   );

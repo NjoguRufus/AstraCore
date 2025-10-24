@@ -100,12 +100,13 @@ export const OnboardingFlow: React.FC = () => {
         onboardingCompleted: true,
         contractSigned: true,
         contractId: user.uid, // Use UID as contract ID since we stored it with UID
+        roleOnboardingCompleted: false, // Ensure role onboarding modal shows after initial onboarding
         updatedAt: new Date()
       });
 
       toast.success('Onboarding completed successfully!');
       
-      console.log('🎉 Onboarding completed! Redirecting to member dashboard...');
+      console.log('🎉 Onboarding completed! Refreshing user context...');
       
       // Refresh user context to get updated flags
       await refreshUser();

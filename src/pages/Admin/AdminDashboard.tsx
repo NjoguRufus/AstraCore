@@ -59,10 +59,10 @@ export const AdminDashboard: React.FC = () => {
 
   const [memberForm, setMemberForm] = useState({
     name: '',
-    role: 'dev' as 'dev' | 'design' | 'cyber' | 'analyst',
+    role: 'dev' as 'dev' | 'design' | 'cyber' | 'analyst' | 'sales' | 'marketing' | 'campaign',
     team: '',
     idCode: '',
-    status: 'active' as 'active' | 'deactivated'
+    status: 'pending' as 'active' | 'deactivated' | 'pending'
   });
 
   const [showNewTeamInput, setShowNewTeamInput] = useState(false);
@@ -135,7 +135,7 @@ export const AdminDashboard: React.FC = () => {
   
   // Helper function to reset member form
   const resetMemberForm = () => {
-    setMemberForm({ name: '', role: 'dev', team: '', idCode: '', status: 'active' });
+    setMemberForm({ name: '', role: 'dev', team: '', idCode: '', status: 'pending' });
     setShowNewTeamInput(false);
     setNewTeamName('');
   };
@@ -209,7 +209,10 @@ export const AdminDashboard: React.FC = () => {
         phone: '',
         idCode: memberForm.idCode,
         isAdmin: false,
-        status: memberForm.status
+        status: memberForm.status,
+        pendingApproval: memberForm.status === 'pending',
+        companyId: '', // Will be set during registration
+        companyRole: 'company_member'
       });
 
       resetMemberForm();
@@ -442,18 +445,41 @@ export const AdminDashboard: React.FC = () => {
     <Layout>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-          <div className="flex items-center space-x-4">
-            <img
-              src="https://imgur.com/T7mH4Ly.png"
-              alt="Astracore Logo"
-              className="w-16 h-16 object-contain bg-white rounded-xl p-2"
-            />
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
-              <p className="text-blue-100 text-xl">
-                Manage team members, projects, and system operations
-              </p>
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0 lg:space-x-8">
+            {/* Logo and Title Section */}
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl p-3 shadow-lg">
+                <img
+                  src="https://imgur.com/T7mH4Ly.png"
+                  alt="Astraronix Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  Admin Dashboard
+                </h1>
+                <p className="text-blue-100 text-sm">
+                  Manage team members, projects, and system operations
+                </p>
+              </div>
+            </div>
+            
+            {/* Stats Section */}
+            <div className="flex gap-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-white">{activeMembers.length}</div>
+                <div className="text-blue-100 text-xs">Active Members</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-white">{projects?.length || 0}</div>
+                <div className="text-blue-100 text-xs">Projects</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-white">{announcements?.length || 0}</div>
+                <div className="text-blue-100 text-xs">Announcements</div>
+              </div>
             </div>
           </div>
         </div>
@@ -482,13 +508,6 @@ export const AdminDashboard: React.FC = () => {
           >
             <Bell className="w-5 h-5" />
             <span>Announcement</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="flex items-center justify-center space-x-2 py-4"
-          >
-            <BookOpen className="w-5 h-5" />
-            <span>Manage Wiki</span>
           </Button>
           <Button
             variant="outline"
@@ -783,10 +802,36 @@ export const AdminDashboard: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="dev">Developer</option>
-                    <option value="design">Designer</option>
-                    <option value="cyber">Cybersecurity</option>
-                    <option value="analyst">Analyst</option>
+                    <option value="design">Content Creator</option>
+                    <option value="cyber">Cybersecurity Specialist</option>
+                    <option value="analyst">Data Analyst</option>
+                    <option value="sales">Sales Agent</option>
+                    <option value="marketing">Digital Marketing Agent</option>
+                    <option value="campaign">Campaign Manager</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Initial Status
+                  </label>
+                  <select
+                    value={memberForm.status}
+                    onChange={(e) => setMemberForm(prev => ({ ...prev, status: e.target.value as any }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="pending">Pending Approval</option>
+                    <option value="active">Active (Auto-approve)</option>
+                    <option value="deactivated">Deactivated</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {memberForm.status === 'pending' 
+                      ? 'Member will need admin approval before accessing the system'
+                      : memberForm.status === 'active'
+                      ? 'Member will be immediately active'
+                      : 'Member will be deactivated'
+                    }
+                  </p>
                 </div>
 
                 <div>
@@ -1595,8 +1640,9 @@ export const AdminDashboard: React.FC = () => {
                     <div>
                       <h4 className="font-medium text-gray-900 mb-3 text-base">Company Information</h4>
                       <p className="mb-2"><strong>Name:</strong> Astraronix Solutions</p>
-                      <p className="mb-2"><strong>Address:</strong> [Company Address]</p>
-                      <p className="mb-2"><strong>Contact:</strong> [Company Contact]</p>
+                      <p className="mb-2"><strong>Address:</strong> Nairobi, Kenya, Remote</p>
+                      <p className="mb-2"><strong>Contact:</strong> +254 714 748 299</p>
+                      <p className="mb-2"><strong>Email:</strong> astraronixsolutions@gmail.com</p>
                     </div>
                     
                     <div>
@@ -1614,31 +1660,31 @@ export const AdminDashboard: React.FC = () => {
                     <div className="space-y-3 text-sm text-gray-700">
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                        <p>The team member agrees to perform assigned duties with diligence and integrity.</p>
+                        <p>Each team member agrees to perform their duties responsibly, honestly, and with respect toward the company and clients.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                        <p>Astraronix Solutions will provide necessary tools, resources, and agreed-upon compensation.</p>
+                        <p>Astraronix Solutions will provide clear guidance, access to needed tools, and agreed compensation for completed work or closed deals.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                        <p>Both parties must maintain confidentiality of all proprietary information.</p>
+                        <p>Both Astraronix and the team member agree to protect all company and client information from unauthorized sharing.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                        <p>Either party may terminate this agreement with written notice, subject to any additional terms agreed upon.</p>
+                        <p>Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">5</span>
-                        <p>The team member will adhere to company policies and procedures.</p>
+                        <p>Team members are expected to follow Astraronix's communication standards and maintain professionalism in all client interactions.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">6</span>
-                        <p>Intellectual property created during employment belongs to Astraronix Solutions.</p>
+                        <p>Work created for Astraronix (designs, proposals, content, or code) remains property of Astraronix, but creators may showcase it in their personal portfolios with permission.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">7</span>
-                        <p>This contract is governed by applicable employment laws.</p>
+                        <p>This agreement is guided by general Kenyan labor principles, but built on trust and collaboration — not strict legal enforcement.</p>
                       </div>
                     </div>
                   </div>

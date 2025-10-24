@@ -5,6 +5,7 @@ import { updateUser, deleteUser, toggleUserStatus, getTeams } from '../../servic
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { Layout } from '../../components/Layout/Layout';
+import { PendingMembers } from '../../components/Admin/PendingMembers';
 import { 
   Users, 
   Edit, 
@@ -15,7 +16,8 @@ import {
   UserX,
   Crown,
   Power,
-  PowerOff
+  PowerOff,
+  Clock
 } from 'lucide-react';
 import { User, Team } from '../../types';
 
@@ -31,7 +33,7 @@ export const MemberManagement: React.FC = () => {
   
   const [memberForm, setMemberForm] = useState({
     name: '',
-    role: 'dev' as 'dev' | 'design' | 'cyber' | 'analyst' | 'admin',
+    role: 'dev' as 'dev' | 'design' | 'cyber' | 'analyst' | 'admin' | 'sales' | 'marketing' | 'campaign',
     team: '',
     isAdmin: false
   });
@@ -49,6 +51,7 @@ export const MemberManagement: React.FC = () => {
 
   const activeMembers = users?.filter(u => u?.status === 'active') || [];
   const deactivatedMembers = users?.filter(u => u?.status === 'deactivated') || [];
+  const pendingMembers = users?.filter(u => u?.status === 'pending') || [];
 
   // Load teams when component mounts
   React.useEffect(() => {
@@ -178,6 +181,9 @@ export const MemberManagement: React.FC = () => {
       case 'design': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'cyber': return 'bg-green-100 text-green-800 border-green-200';
       case 'analyst': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'sales': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'marketing': return 'bg-pink-100 text-pink-800 border-pink-200';
+      case 'campaign': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -196,18 +202,33 @@ export const MemberManagement: React.FC = () => {
     <Layout>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Member Management</h1>
-            <p className="text-gray-600 mt-1">Manage active and deactivated team members</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-              {activeMembers.length} Active
-            </span>
-            <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
-              {deactivatedMembers.length} Deactivated
-            </span>
+        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0 lg:space-x-8">
+            {/* Title Section */}
+            <div>
+              <h1 className="text-2xl font-bold text-white">
+                Member Management
+              </h1>
+              <p className="text-purple-100 text-sm">
+                Manage active and deactivated team members
+              </p>
+            </div>
+            
+            {/* Stats Section */}
+            <div className="flex gap-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-white">{activeMembers.length}</div>
+                <div className="text-purple-100 text-xs">Active</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-white">{pendingMembers.length}</div>
+                <div className="text-purple-100 text-xs">Pending</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center min-w-[80px]">
+                <div className="text-xl font-bold text-white">{deactivatedMembers.length}</div>
+                <div className="text-purple-100 text-xs">Deactivated</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -235,6 +256,7 @@ export const MemberManagement: React.FC = () => {
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
+                <option value="pending">Pending</option>
                 <option value="deactivated">Deactivated</option>
               </select>
               <select
@@ -245,13 +267,23 @@ export const MemberManagement: React.FC = () => {
                 <option value="all">All Roles</option>
                 <option value="admin">Admin</option>
                 <option value="dev">Developer</option>
-                <option value="design">Designer</option>
+                <option value="design">Content Creator</option>
                 <option value="cyber">Cybersecurity</option>
                 <option value="analyst">Analyst</option>
+                <option value="sales">Sales Agent</option>
+                <option value="marketing">Digital Marketing Agent</option>
+                <option value="campaign">Campaign Manager</option>
               </select>
             </div>
           </div>
         </Card>
+
+        {/* Pending Members Section */}
+        {pendingMembers.length > 0 && (
+          <div className="mb-6">
+            <PendingMembers />
+          </div>
+        )}
 
         {/* Members List */}
         <Card>
@@ -261,7 +293,11 @@ export const MemberManagement: React.FC = () => {
                 <div 
                   key={member.uid || member.idCode || member.email} 
                   className={`flex items-center justify-between p-4 rounded-lg border ${
-                    member.status === 'active' ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-300 opacity-75'
+                    member.status === 'active' 
+                      ? 'bg-white border-gray-200' 
+                      : member.status === 'pending'
+                      ? 'bg-yellow-50 border-yellow-200'
+                      : 'bg-gray-50 border-gray-300 opacity-75'
                   }`}
                 >
                   <div className="flex items-center space-x-4">
@@ -285,6 +321,8 @@ export const MemberManagement: React.FC = () => {
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                           member.status === 'active' 
                             ? 'bg-green-100 text-green-800' 
+                            : member.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
                           {member.status}
@@ -366,9 +404,12 @@ export const MemberManagement: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="dev">Developer</option>
-                    <option value="design">Designer</option>
+                    <option value="design">Content Creator</option>
                     <option value="cyber">Cybersecurity</option>
                     <option value="analyst">Analyst</option>
+                    <option value="sales">Sales Agent</option>
+                    <option value="marketing">Digital Marketing Agent</option>
+                    <option value="campaign">Campaign Manager</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>

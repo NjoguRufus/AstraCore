@@ -501,8 +501,9 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
                 <div>
                   <h4 className="font-medium text-gray-900 mb-3 text-base">Company Information</h4>
                   <p className="mb-2"><strong>Name:</strong> Astraronix Solutions</p>
-                  <p className="mb-2"><strong>Address:</strong> [Company Address]</p>
-                  <p className="mb-2"><strong>Contact:</strong> [Company Contact]</p>
+                  <p className="mb-2"><strong>Address:</strong> Nairobi, Kenya, Remote</p>
+                  <p className="mb-2"><strong>Contact:</strong> +254 714 748 299</p>
+                  <p className="mb-2"><strong>Email:</strong> astraronixsolutions@gmail.com</p>
                 </div>
                 
                 <div>
@@ -520,31 +521,31 @@ export const ContractSigning: React.FC<ContractSigningProps> = ({
                 <div className="space-y-3 text-sm text-gray-700">
                   <div className="flex items-start space-x-3">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                    <p>The team member agrees to perform assigned duties with diligence and integrity.</p>
+                    <p>Each team member agrees to perform their duties responsibly, honestly, and with respect toward the company and clients.</p>
                   </div>
                   <div className="flex items-start space-x-3">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                    <p>Astraronix Solutions will provide necessary tools, resources, and agreed-upon compensation.</p>
+                    <p>Astraronix Solutions will provide clear guidance, access to needed tools, and agreed compensation for completed work or closed deals.</p>
                   </div>
                   <div className="flex items-start space-x-3">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                    <p>Both parties must maintain confidentiality of all proprietary information.</p>
+                    <p>Both Astraronix and the team member agree to protect all company and client information from unauthorized sharing.</p>
                   </div>
                   <div className="flex items-start space-x-3">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                    <p>Either party may terminate this agreement with written notice, subject to any additional terms agreed upon.</p>
+                    <p>Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</p>
                   </div>
                   <div className="flex items-start space-x-3">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">5</span>
-                    <p>The team member will adhere to company policies and procedures.</p>
+                    <p>Team members are expected to follow Astraronix's communication standards and maintain professionalism in all client interactions.</p>
                   </div>
                   <div className="flex items-start space-x-3">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">6</span>
-                    <p>Intellectual property created during employment belongs to Astraronix Solutions.</p>
+                    <p>Work created for Astraronix (designs, proposals, content, or code) remains property of Astraronix, but creators may showcase it in their personal portfolios with permission.</p>
                   </div>
                   <div className="flex items-start space-x-3">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">7</span>
-                    <p>This contract is governed by applicable employment laws.</p>
+                    <p>This agreement is guided by general Kenyan labor principles, but built on trust and collaboration — not strict legal enforcement.</p>
                   </div>
                 </div>
               </div>

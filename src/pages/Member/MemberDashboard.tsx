@@ -173,34 +173,56 @@ export const MemberDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Welcome Header (polished mobile-first layout) */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-4 sm:p-6 md:p-8 text-white">
-          <div className="space-y-4">
-            <div className="text-center">
-              <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.name}!</h1>
-            </div>
-            <div className="flex items-center justify-center gap-4 md:gap-8">
-              <img
-                src="https://imgur.com/T7mH4Ly.png"
-                alt="Astracore Logo"
-                className="w-12 h-12 md:w-16 md:h-16 object-contain bg-white rounded-xl p-2"
-              />
-              {user?.photoURL ? (
+        {/* Welcome Header */}
+        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white">
+          <div className="flex flex-col lg:flex-row items-center justify-between space-y-4 lg:space-y-0 lg:space-x-8">
+            {/* Welcome Section */}
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl p-3 shadow-lg">
                 <img
-                  src={user.photoURL}
-                  alt={user.name}
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-white shadow-lg object-cover"
+                  src="https://imgur.com/T7mH4Ly.png"
+                  alt="Astraronix Logo"
+                  className="w-full h-full object-contain"
                 />
-              ) : (
-                <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-full flex items-center justify-center">
-                  <Users className="w-7 h-7 md:w-8 md:h-8 text-white" />
-                </div>
-              )}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  Welcome back, {user?.name}!
+                </h1>
+                <p className="text-green-100 text-sm">
+                  {user?.role} • {user?.team} • ID: {user?.idCode}
+                </p>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-blue-100 text-sm md:text-base">
-                {user?.role} • {user?.team} • ID: {user?.idCode}
-              </p>
+            
+            {/* User Avatar and Stats */}
+            <div className="flex items-center space-x-4">
+              {/* User Avatar */}
+              <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 shadow-lg">
+                {user?.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-white/20 flex items-center justify-center">
+                    <Users className="w-7 h-7 text-white" />
+                  </div>
+                )}
+              </div>
+              
+              {/* Quick Stats */}
+              <div className="flex gap-3">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center min-w-[70px]">
+                  <div className="text-lg font-bold text-white">{userProjects.length}</div>
+                  <div className="text-green-100 text-xs">My Projects</div>
+                </div>
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center min-w-[70px]">
+                  <div className="text-lg font-bold text-white">{completedProjects.length}</div>
+                  <div className="text-green-100 text-xs">Completed</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -773,8 +795,9 @@ export const MemberDashboard: React.FC = () => {
                     <div>
                       <h4 className="font-medium text-gray-900 mb-3 text-base">Company Information</h4>
                       <p className="mb-2"><strong>Name:</strong> Astraronix Solutions</p>
-                      <p className="mb-2"><strong>Address:</strong> Online</p>
-                      <p className="mb-2"><strong>Contact:</strong> +254714748299</p>
+                      <p className="mb-2"><strong>Address:</strong> Nairobi, Kenya, Remote</p>
+                      <p className="mb-2"><strong>Contact:</strong> +254 714 748 299</p>
+                      <p className="mb-2"><strong>Email:</strong> astraronixsolutions@gmail.com</p>
                     </div>
                     
                     <div>
@@ -791,31 +814,31 @@ export const MemberDashboard: React.FC = () => {
                     <div className="space-y-3 text-sm text-gray-700">
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                        <p>The team member agrees to perform assigned duties with diligence and integrity.</p>
+                        <p>Each team member agrees to perform their duties responsibly, honestly, and with respect toward the company and clients.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                        <p>Astraronix Solutions will provide necessary tools, resources, and agreed-upon compensation.</p>
+                        <p>Astraronix Solutions will provide clear guidance, access to needed tools, and agreed compensation for completed work or closed deals.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                        <p>Both parties must maintain confidentiality of all proprietary information.</p>
+                        <p>Both Astraronix and the team member agree to protect all company and client information from unauthorized sharing.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                        <p>Either party may terminate this agreement with written notice, subject to any additional terms agreed upon.</p>
+                        <p>Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">5</span>
-                        <p>The team member will adhere to company policies and procedures.</p>
+                        <p>Team members are expected to follow Astraronix's communication standards and maintain professionalism in all client interactions.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">6</span>
-                        <p>Intellectual property created during employment belongs to Astraronix Solutions.</p>
+                        <p>Work created for Astraronix (designs, proposals, content, or code) remains property of Astraronix, but creators may showcase it in their personal portfolios with permission.</p>
                       </div>
                       <div className="flex items-start space-x-3">
                         <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">7</span>
-                        <p>This contract is governed by applicable employment laws.</p>
+                        <p>This agreement is guided by general Kenyan labor principles, but built on trust and collaboration — not strict legal enforcement.</p>
                       </div>
                     </div>
                   </div>

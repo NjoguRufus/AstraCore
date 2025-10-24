@@ -183,11 +183,15 @@ export const MemberAccess: React.FC = () => {
             skills: [],
             isAdmin: false,
             idCode: code,
-            status: 'active',
+            status: codeData?.assignedStatus || 'pending',
+            pendingApproval: codeData?.assignedStatus === 'pending' || codeData?.pendingApproval || false,
             createdAt: serverTimestamp(),
             lastLogin: serverTimestamp(),
             onboardingCompleted: false,
-            contractSigned: false
+            contractSigned: false,
+            companyId: '', // Will be set by admin
+            companyRole: 'company_member',
+            roleOnboardingCompleted: false
           });
           
           batch.update(codeRef, {

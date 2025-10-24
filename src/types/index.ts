@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   photoURL?: string;
-  role: 'admin' | 'dev' | 'design' | 'cyber' | 'analyst';
+  role: 'admin' | 'dev' | 'design' | 'cyber' | 'analyst' | 'sales' | 'marketing' | 'campaign';
   team: string;
   skills: string[];
   github?: string;
@@ -11,7 +11,7 @@ export interface User {
   phone?: string;
   idCode: string;
   isAdmin?: boolean;
-  status: 'active' | 'deactivated';
+  status: 'active' | 'deactivated' | 'pending';
   createdAt: Date;
   onboardingCompleted?: boolean;
   contractSigned?: boolean;
@@ -19,6 +19,15 @@ export interface User {
   // Multi-tenant fields
   companyId: string;
   companyRole: 'company_admin' | 'company_member';
+  // Pending member fields
+  pendingApproval?: boolean;
+  approvedBy?: string;
+  approvedAt?: Date;
+  rejectedBy?: string;
+  rejectedAt?: Date;
+  rejectionReason?: string;
+  // Astraronix onboarding
+  roleOnboardingCompleted?: boolean;
 }
 
 export interface Project {

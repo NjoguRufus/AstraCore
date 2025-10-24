@@ -112,7 +112,7 @@ export const updateCompanySettings = async (companyId: string, settings: Partial
   }
 };
 
-// Users (Active and Deactivated Members)
+// Users (Active, Deactivated, and Pending Members)
 // Create an invitation code only (do NOT create a user document here).
 // The actual user document will be created when the invitee signs in and claims the code.
 export const createUser = async (userData: Omit<User, 'uid' | 'createdAt'>) => {
@@ -125,6 +125,8 @@ export const createUser = async (userData: Omit<User, 'uid' | 'createdAt'>) => {
       assignedName: userData.name,
       assignedTeam: userData.team,
       assignedRole: userData.role,
+      assignedStatus: userData.status || 'pending',
+      pendingApproval: userData.pendingApproval || false,
       createdAt: new Date()
     }, { merge: true });
     return userData.idCode;
@@ -178,6 +180,59 @@ export const deleteUser = async (uid: string) => {
     await deleteDoc(doc(db, 'users', uid));
   } catch (error) {
     console.error('Error deleting user:', error);
+    throw error;
+  }
+};
+
+// Pending Member Operations
+export const approvePendingMember = async (uid: string, approvedBy: string) => {
+  try {
+    await updateDoc(doc(db, 'users', uid), {
+      status: 'active',
+      pendingApproval: false,
+      approvedBy: approvedBy,
+      approvedAt: new Date(),
+      lastUpdated: new Date()
+    });
+  } catch (error) {
+    console.error('Error approving pending member:', error);
+    throw error;
+  }
+};
+
+export const rejectPendingMember = async (uid: string, rejectedBy: string, rejectionReason?: string) => {
+  try {
+    await updateDoc(doc(db, 'users', uid), {
+      status: 'deactivated',
+      pendingApproval: false,
+      rejectedBy: rejectedBy,
+      rejectedAt: new Date(),
+      rejectionReason: rejectionReason || 'No reason provided',
+      lastUpdated: new Date()
+    });
+  } catch (error) {
+    console.error('Error rejecting pending member:', error);
+    throw error;
+  }
+};
+
+export const getPendingMembers = async (companyId: string): Promise<User[]> => {
+  try {
+    const q = query(
+      collection(db, 'users'), 
+      where('companyId', '==', companyId),
+      where('status', '==', 'pending')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      uid: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      approvedAt: doc.data().approvedAt?.toDate() || undefined,
+      rejectedAt: doc.data().rejectedAt?.toDate() || undefined
+    })) as User[];
+  } catch (error) {
+    console.error('Error fetching pending members:', error);
     throw error;
   }
 };

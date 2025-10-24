@@ -213,18 +213,29 @@ export const ProjectManagement: React.FC = () => {
     <Layout>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Project Management</h1>
-            <p className="text-gray-600 mt-1">Create and manage team projects</p>
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl shadow-lg p-6 text-white">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0 lg:space-x-8">
+            {/* Title Section */}
+            <div>
+              <h1 className="text-2xl font-bold text-white">
+                Project Management
+              </h1>
+              <p className="text-orange-100 text-sm">
+                Create and manage team projects
+              </p>
+            </div>
+            
+            {/* Action Button */}
+            <div className="flex items-center space-x-4">
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-white/20 backdrop-blur-sm border border-white/30 text-white hover:bg-white/30 transition-all duration-200 flex items-center space-x-2 px-4 py-2 rounded-xl font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Project</span>
+              </Button>
+            </div>
           </div>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Project</span>
-          </Button>
         </div>
 
         {/* Stats */}

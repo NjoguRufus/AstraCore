@@ -165,9 +165,11 @@ export async function generateContractPDF(data: ContractData | Contract): Promis
   setBodyStyle();
   pdf.text('Name: Astraronix Solutions', margin, yPosition);
   yPosition += 8;
-  pdf.text('Address: Online', margin, yPosition);
+  pdf.text('Address: Nairobi, Kenya, Remote', margin, yPosition);
   yPosition += 8;
-  pdf.text('Contact: +254714748299', margin, yPosition);
+  pdf.text('Contact: +254 714 748 299', margin, yPosition);
+  yPosition += 8;
+  pdf.text('Email: astraronixsolutions@gmail.com', margin, yPosition);
   yPosition += 15;
 
   setHeaderStyle();
@@ -190,13 +192,13 @@ export async function generateContractPDF(data: ContractData | Contract): Promis
 
   setBodyStyle();
   const terms = [
-    'The team member agrees to perform assigned duties with diligence and integrity.',
-    'Astraronix Solutions will provide necessary tools, resources, and agreed-upon compensation.',
-    'Both parties must maintain confidentiality of all proprietary information.',
-    'Either party may terminate this agreement with written notice, subject to any additional terms agreed upon.',
-    'The team member will adhere to company policies and procedures.',
-    'Intellectual property created during employment belongs to Astraronix Solutions.',
-    'This contract is governed by applicable employment laws.'
+    'Each team member agrees to perform their duties responsibly, honestly, and with respect toward the company and clients.',
+    'Astraronix Solutions will provide clear guidance, access to needed tools, and agreed compensation for completed work or closed deals.',
+    'Both Astraronix and the team member agree to protect all company and client information from unauthorized sharing.',
+    'Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.',
+    'Team members are expected to follow Astraronix\'s communication standards and maintain professionalism in all client interactions.',
+    'Work created for Astraronix (designs, proposals, content, or code) remains property of Astraronix, but creators may showcase it in their personal portfolios with permission.',
+    'This agreement is guided by general Kenyan labor principles, but built on trust and collaboration — not strict legal enforcement.'
   ];
 
   terms.forEach((term, index) => {
@@ -466,8 +468,9 @@ export function generateContractHTML(contract: Contract): string {
 
     <h2>Company Information</h2>
     <p><strong>Name:</strong> Astraronix Solutions</p>
-    <p><strong>Address:</strong> Online</p>
-    <p><strong>Contact:</strong> +254714748299</p>
+    <p><strong>Address:</strong> Nairobi, Kenya, Remote</p>
+    <p><strong>Contact:</strong> +254 714 748 299</p>
+    <p><strong>Email:</strong> astraronixsolutions@gmail.com</p>
 
     <h2>Team Member Information</h2>
     <p><strong>Name:</strong> ${contract.memberName}</p>
@@ -477,13 +480,13 @@ export function generateContractHTML(contract: Contract): string {
 
     <h2>Terms & Conditions</h2>
     <ol>
-        <li>The team member agrees to perform assigned duties with diligence and integrity.</li>
-        <li>Astraronix Solutions will provide necessary tools, resources, and agreed-upon compensation.</li>
-        <li>Both parties must maintain confidentiality of all proprietary information.</li>
-        <li>Either party may terminate this agreement with written notice, subject to any additional terms agreed upon.</li>
-        <li>The team member will adhere to company policies and procedures.</li>
-        <li>Intellectual property created during employment belongs to Astraronix Solutions.</li>
-        <li>This contract is governed by applicable employment laws.</li>
+        <li>Each team member agrees to perform their duties responsibly, honestly, and with respect toward the company and clients.</li>
+        <li>Astraronix Solutions will provide clear guidance, access to needed tools, and agreed compensation for completed work or closed deals.</li>
+        <li>Both Astraronix and the team member agree to protect all company and client information from unauthorized sharing.</li>
+        <li>Since Astraronix is a small, growing company, either party can end this working arrangement at any time with simple written notice. No penalties apply — just transparency and respect.</li>
+        <li>Team members are expected to follow Astraronix's communication standards and maintain professionalism in all client interactions.</li>
+        <li>Work created for Astraronix (designs, proposals, content, or code) remains property of Astraronix, but creators may showcase it in their personal portfolios with permission.</li>
+        <li>This agreement is guided by general Kenyan labor principles, but built on trust and collaboration — not strict legal enforcement.</li>
     </ol>
 
     <div class="signatures">
