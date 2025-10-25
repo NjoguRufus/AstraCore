@@ -140,8 +140,6 @@ export const MemberProfile: React.FC = () => {
         message: 'Failed to update profile. Please try again.',
         type: 'error'
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 

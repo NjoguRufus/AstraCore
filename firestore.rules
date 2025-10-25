@@ -225,6 +225,50 @@ service cloud.firestore {
       allow create: if isAuthenticatedUser();
     }
     
+    // Content Tasks Collection - Multi-tenant
+    match /content_tasks/{taskId} {
+      // Company members can read content tasks in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can create and manage all content tasks in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Users can update content tasks assigned to them
+      allow update: if isCompanyMember() && 
+                   getUserCompanyId() == resource.data.companyId &&
+                   request.auth.uid == resource.data.assignedTo;
+      
+      // Development: Allow any authenticated user to read and update content tasks
+      allow read: if isAuthenticatedUser();
+      allow update: if isAuthenticatedUser() && 
+                   request.auth.uid == resource.data.assignedTo;
+      allow create: if isAuthenticatedUser();
+    }
+    
+    // Notifications Collection - Multi-tenant
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if isAuthenticatedUser() && request.auth.uid == resource.data.userId;
+      
+      // System can create notifications for users
+      allow create: if isAuthenticatedUser();
+      
+      // Development: Allow any authenticated user to read notifications
+      allow read: if isAuthenticatedUser();
+    }
+    
+    // Activity Logs Collection - Multi-tenant
+    match /activity_logs/{logId} {
+      // Users can read their own activity logs
+      allow read: if isAuthenticatedUser() && request.auth.uid == resource.data.userId;
+      
+      // Users can create their own activity logs
+      allow create: if isAuthenticatedUser() && request.auth.uid == request.resource.data.userId;
+      
+      // Development: Allow any authenticated user to read and create activity logs
+      allow read, create: if isAuthenticatedUser();
+    }
+    
     // Announcements Collection - Multi-tenant
     match /announcements/{announcementId} {
       // Company members can read announcements in their company
@@ -464,6 +508,18 @@ service cloud.firestore {
       allow list: if isCompanyMember();
     }
     
+    match /content_tasks {
+      allow list: if isCompanyMember();
+    }
+    
+    match /notifications {
+      allow list: if isCompanyMember();
+    }
+    
+    match /activity_logs {
+      allow list: if isCompanyMember();
+    }
+    
     match /announcements {
       allow list: if isCompanyMember();
     }
@@ -514,6 +570,18 @@ service cloud.firestore {
     }
     
     match /tasks {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /content_tasks {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /notifications {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /activity_logs {
       allow list: if isAuthenticatedUser();
     }
     

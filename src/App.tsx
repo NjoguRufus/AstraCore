@@ -29,7 +29,7 @@ import { MemberProfile } from './pages/Member/MemberProfile';
 // Role-specific Dashboard Pages
 import { DashboardIndex } from './pages/dashboard/index';
 import { DeveloperDashboard } from './pages/dashboard/developer';
-import { ContentDashboard } from './pages/dashboard/content';
+import ContentDashboard from './dashboards/ContentDashboard';
 import { SalesDashboard } from './pages/dashboard/sales';
 import { CampaignDashboard } from './pages/dashboard/campaign';
 import { FirebaseDiagnostics } from './components/FirebaseDiagnostics';

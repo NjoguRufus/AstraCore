@@ -30,6 +30,7 @@ export const DashboardRouter: React.FC = () => {
     case 'dev':
       return <Navigate to="/dashboard/developer" replace />;
     case 'design':
+    case 'content-creator':
       return <Navigate to="/dashboard/content" replace />;
     case 'sales':
       return <Navigate to="/dashboard/sales" replace />;

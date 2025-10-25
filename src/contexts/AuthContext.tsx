@@ -69,7 +69,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser) {
         try {
           // Check if user exists in users collection
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          let userDoc;
+          try {
+            userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          } catch (error) {
+            console.error('Error fetching user document:', error);
+            // If there's a permission error, the user might not exist yet
+            // This could happen during the onboarding process
+            setLoading(false);
+            return;
+          }
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
