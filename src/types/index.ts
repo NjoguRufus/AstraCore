@@ -388,7 +388,7 @@ export interface SalesLead {
   email: string;
   phone?: string;
   source: 'website' | 'referral' | 'social' | 'cold-call' | 'other';
-  status: 'lead' | 'contacted' | 'qualified' | 'proposal-sent' | 'negotiation' | 'closed-won' | 'closed-lost';
+  status: 'lead' | 'contacted' | 'qualified' | 'proposal-sent' | 'negotiation' | 'client' | 'closed-lost';
   value?: number;
   probability: number; // 0-100
   assignedTo: string; // Sales Agent UID

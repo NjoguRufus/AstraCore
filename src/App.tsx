@@ -41,6 +41,7 @@ import { RoleOnboardingModal } from './components/Onboarding/RoleOnboardingModal
 
 // Shared Pages
 import { Settings } from './pages/Shared/Settings';
+import { ClientContractSigning } from './pages/Client/ClientContractSigning';
 
 function AppContent() {
   const { user, loading, showRoleOnboarding, setShowRoleOnboarding } = useAuth();
@@ -61,6 +62,7 @@ function AppContent() {
       <Route path="/auth/admin-access" element={<AdminAccess />} />
       <Route path="/auth/member-access" element={<MemberAccess />} />
       <Route path="/auth/signin" element={<SignIn />} />
+      <Route path="/contracts/:id" element={<ClientContractSigning />} />
 
       {/* Admin Routes */}
       <Route

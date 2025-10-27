@@ -1,16 +1,16 @@
 export const cloudinaryConfig = {
-  cloudName: 'ddihsjls0',
-  uploadPreset: 'UPLOAD1',
-  apiKey: '717939135628215',
+  cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dwn6vznqa',
+  uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'astracore',
+  apiKey: import.meta.env.VITE_CLOUDINARY_API_KEY || '464418611683531',
   // Note: API_SECRET should only be used server-side for security
   // 
-  // Current credentials:
-  // - Cloud Name: ddihsjls0
-  // - API Key: 717939135628215
-  // - API Secret: rytLuBPENHhgMWBZyJYvyMg635k
-  // - Upload Preset: UPLOAD1
+  // Current credentials (fallback values):
+  // - Cloud Name: dwn6vznqa
+  // - API Key: 464418611683531
+  // - API Secret: 4VEE8kkrYx-CcLLnQ7K6RF_VJrI
+  // - Upload Preset: astracore
   //
-  // Make sure upload preset "UPLOAD1" is set to "Unsigned" in your dashboard
+  // Make sure upload preset "astracore" is set to "Unsigned" in your dashboard
 };
 
 // Debug function to log current configuration
@@ -146,30 +146,141 @@ export const uploadSignatureToCloudinary = async (signatureDataUrl: string): Pro
   }
 };
 
-// Test function to verify Cloudinary connectivity
-export const testCloudinaryConnection = async (): Promise<boolean> => {
+// Test function to verify Cloudinary connectivity and upload presets
+export const testCloudinaryUpload = async (): Promise<{ success: boolean; error?: string; data?: any }> => {
   try {
+    console.log('🔍 Testing Cloudinary upload with current configuration...');
+    console.log('Cloud Name:', cloudinaryConfig.cloudName);
+    console.log('Upload Preset:', cloudinaryConfig.uploadPreset);
+    
+    // Create a simple test image
+    const canvas = document.createElement('canvas');
+    canvas.width = 100;
+    canvas.height = 100;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#00BFFF';
+      ctx.fillRect(0, 0, 100, 100);
+      ctx.fillStyle = '#0B1C48';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('TEST', 50, 50);
+    }
+    
+    const blob = await new Promise<Blob>((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+      }, 'image/png');
+    });
+    
+    const file = new File([blob], 'test-upload.png', { type: 'image/png' });
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+    
+    console.log('📤 Attempting upload...');
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          upload_preset: cloudinaryConfig.uploadPreset,
-          cloud_name: cloudinaryConfig.cloudName,
-          file: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-        })
+        body: formData,
       }
     );
     
-    console.log('Test connection response:', response.status, response.statusText);
-    return response.ok;
+    console.log('📊 Response status:', response.status);
+    console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
+    
+    const responseText = await response.text();
+    console.log('📊 Response body:', responseText);
+    
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `HTTP ${response.status}: ${responseText}`
+      };
+    }
+    
+    const data = JSON.parse(responseText);
+    console.log('✅ Upload successful:', data);
+    
+    return {
+      success: true,
+      data: data
+    };
+    
   } catch (error) {
-    console.error('Test connection failed:', error);
-    return false;
+    console.error('❌ Upload test failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
   }
+};
+
+// Function to test different upload presets
+export const testUploadPresets = async (): Promise<void> => {
+  const possiblePresets = [
+    'astraronix_content',
+    'UPLOAD1',
+    'astracore',
+    'astracore_content',
+    'content_uploads',
+    'image_uploads',
+    'unsigned_upload',
+    'default'
+  ];
+  
+  console.log('🔍 Testing different upload presets...');
+  
+  for (const preset of possiblePresets) {
+    try {
+      console.log(`Testing preset: ${preset}`);
+      
+      // Create a proper image file (1x1 PNG) - same as successful test
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 1, 1);
+      }
+      
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob || new Blob());
+        }, 'image/png');
+      });
+      
+      const formData = new FormData();
+      formData.append('upload_preset', preset);
+      formData.append('file', blob, 'test.png');
+      
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Preset "${preset}" works! Response:`, data);
+        console.log(`🎯 Update your config to use: uploadPreset: '${preset}'`);
+        console.log(`🔗 Uploaded file URL: ${data.secure_url}`);
+        return;
+      } else {
+        const errorText = await response.text();
+        console.log(`❌ Preset "${preset}" failed: ${response.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.log(`❌ Preset "${preset}" error:`, error);
+    }
+  }
+  
+  console.log('❌ No working upload presets found. Check your Cloudinary dashboard.');
 };
 
 // Alternative test function using FormData
@@ -466,3 +577,143 @@ export const diagnoseCloudinaryIssue = async (): Promise<void> => {
   console.log('');
   console.log('🔍 Diagnosis complete. Check the console above for specific issues.');
 };
+
+// Simple test function that can be called from browser console
+export const quickCloudinaryTest = async () => {
+  console.log('🚀 Quick Cloudinary Test Starting...');
+  console.log('Current Config:', cloudinaryConfig);
+  
+  try {
+    // Test with minimal data
+    const formData = new FormData();
+    formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+    formData.append('file', new Blob(['test'], { type: 'text/plain' }), 'test.txt');
+    
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+    
+    console.log('Response Status:', response.status);
+    const responseText = await response.text();
+    console.log('Response Body:', responseText);
+    
+    if (response.ok) {
+      console.log('✅ SUCCESS! Cloudinary is working correctly.');
+      const data = JSON.parse(responseText);
+      console.log('Uploaded file URL:', data.secure_url);
+    } else {
+      console.log('❌ FAILED! Check the error above.');
+      console.log('Common issues:');
+      console.log('1. Upload preset name is incorrect');
+      console.log('2. Upload preset is not set to "Unsigned" mode');
+      console.log('3. Upload preset does not exist');
+      console.log('4. Cloud name is incorrect');
+    }
+    
+  } catch (error) {
+    console.error('❌ ERROR:', error);
+  }
+};
+
+// Function to test if a specific preset works with proper image file
+export const testSpecificPreset = async (presetName: string) => {
+  console.log(`🧪 Testing specific preset: ${presetName}`);
+  
+  try {
+    // Create a proper image file (1x1 PNG)
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 1, 1);
+    }
+    
+    const blob = await new Promise<Blob>((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob || new Blob());
+      }, 'image/png');
+    });
+    
+    const formData = new FormData();
+    formData.append('upload_preset', presetName);
+    formData.append('file', blob, 'test.png');
+    
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+    
+    const responseText = await response.text();
+    console.log(`📊 Response for ${presetName}:`, response.status, responseText);
+    
+    if (response.ok) {
+      console.log(`✅ SUCCESS! Preset "${presetName}" works!`);
+      const result = JSON.parse(responseText);
+      console.log(`🔗 Uploaded file URL: ${result.secure_url}`);
+      return true;
+    } else {
+      console.log(`❌ FAILED! Preset "${presetName}" doesn't work.`);
+      return false;
+    }
+  } catch (error) {
+    console.error(`❌ ERROR testing ${presetName}:`, error);
+    return false;
+  }
+};
+
+// Function to test with actual file upload
+export const testFileUpload = async (file: File) => {
+  console.log(`🧪 Testing file upload with preset: ${cloudinaryConfig.uploadPreset}`);
+  console.log(`📁 File details:`, {
+    name: file.name,
+    size: file.size,
+    type: file.type
+  });
+  
+  try {
+    const formData = new FormData();
+    formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+    formData.append('file', file);
+    
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+    
+    const responseText = await response.text();
+    console.log(`📊 Upload response:`, response.status, responseText);
+    
+    if (response.ok) {
+      console.log(`✅ SUCCESS! File uploaded successfully!`);
+      const result = JSON.parse(responseText);
+      console.log(`🔗 Uploaded file URL: ${result.secure_url}`);
+      return result;
+    } else {
+      console.log(`❌ FAILED! Upload failed.`);
+      return null;
+    }
+  } catch (error) {
+    console.error(`❌ ERROR during upload:`, error);
+    return null;
+  }
+};
+
+// Make it available globally for console testing
+if (typeof window !== 'undefined') {
+  (window as any).testCloudinary = quickCloudinaryTest;
+  (window as any).testUploadPresets = testUploadPresets;
+  (window as any).testSpecificPreset = testSpecificPreset;
+  (window as any).testFileUpload = testFileUpload;
+}

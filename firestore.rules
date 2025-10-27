@@ -404,6 +404,9 @@ service cloud.firestore {
                    getUserCompanyId() == resource.data.companyId &&
                    request.auth.uid == resource.data.assignedTo;
       
+      // Admins can update any client's commission
+      allow update: if isAdmin();
+      
       // Development: Allow any authenticated user to read and update clients
       allow read: if isAuthenticatedUser();
       allow update: if isAuthenticatedUser() && 
@@ -427,6 +430,66 @@ service cloud.firestore {
       // Development: Allow any authenticated user to read commissions
       allow read: if isAuthenticatedUser();
       allow create: if isAuthenticatedUser();
+    }
+    
+    // Content Leads Collection - Multi-tenant
+    match /content_leads/{leadId} {
+      // Company members can read content leads in their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can create and manage all content leads in their company
+      allow create, update, delete: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Users can update content leads assigned to them
+      allow update: if isCompanyMember() && 
+                   getUserCompanyId() == resource.data.companyId &&
+                   request.auth.uid == resource.data.assignedTo;
+      
+      // Admins can read all content leads for monitoring
+      allow read: if isAdmin();
+      
+      // Development: Allow any authenticated user to read and update content leads
+      allow read: if isAuthenticatedUser();
+      allow update: if isAuthenticatedUser() && 
+                   request.auth.uid == resource.data.assignedTo;
+      allow create: if isAuthenticatedUser();
+    }
+    
+    // Content Ideas Collection - Multi-tenant
+    match /content_ideas/{ideaId} {
+      // Users can read and manage their own content ideas
+      allow read, write: if isAuthenticatedUser() && resource.data.creatorId == request.auth.uid;
+      allow create: if isAuthenticatedUser() && request.auth.uid == resource.data.creatorId;
+      
+      // Company members can read content ideas from their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Admins can read all content ideas for monitoring
+      allow read: if isAdmin();
+      
+      // Development: Allow any authenticated user to read and create content ideas
+      allow read: if isAuthenticatedUser();
+      allow create: if isAuthenticatedUser();
+    }
+    
+    // Uploaded Files Collection - Multi-tenant
+    match /uploaded_files/{fileId} {
+      // Users can read and manage their own uploaded files
+      allow read, write: if isAuthenticatedUser() && resource.data.uploadedBy == request.auth.uid;
+      allow create: if isAuthenticatedUser() && request.data.uploadedBy == request.auth.uid;
+      
+      // Company members can read uploaded files from their company
+      allow read: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Company admins can manage all uploaded files in their company
+      allow read, write: if isCompanyMember() && getUserCompanyId() == resource.data.companyId;
+      
+      // Admins can read all uploaded files for monitoring
+      allow read: if isAdmin();
+      
+      // Development: Allow any authenticated user to create and read uploaded files
+      allow create: if isAuthenticatedUser();
+      allow read: if isAuthenticatedUser();
     }
     
     // ======================
@@ -619,6 +682,48 @@ service cloud.firestore {
     
     match /sales_commissions {
       allow list: if isAuthenticatedUser();
+    }
+    
+    match /content_leads {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /content_ideas {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    match /uploaded_files {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    // ======================
+    // Contracts Collection
+    // ======================
+    
+    // Contract Collection List
+    match /contracts {
+      allow list: if isAuthenticatedUser();
+    }
+    
+    // Contract Documents
+    match /contracts/{contractId} {
+      // Anyone can read contracts (for client signing)
+      allow read: if true;
+      
+      // Authenticated users can create contracts
+      allow create: if isAuthenticatedUser();
+      
+      // Users can update their own contracts
+      allow update: if isAuthenticatedUser() && 
+                   (request.auth.uid == resource.data.assignedTo || 
+                    resource.data.contractStatus != 'signed');
+      
+      // Company admins can update all contracts in their company
+      allow update: if isCompanyMember() && 
+                   getUserCompanyId() == resource.data.companyId;
+      
+      // Admins can manage all contracts
+      allow write: if isAdmin();
     }
     
     // ======================

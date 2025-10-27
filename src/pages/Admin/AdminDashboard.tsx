@@ -56,13 +56,16 @@ import {
   Database,
   HardDrive,
   Network,
-  Zap
+  Zap,
+  Megaphone
 } from 'lucide-react';
 import { User, Project, Announcement, Team } from '../../types';
 import ContentDashboard from '../../dashboards/ContentDashboard';
 import { DeveloperDashboard } from '../dashboard/developer';
 import { SalesDashboard } from '../dashboard/sales';
 import { CampaignDashboard } from '../dashboard/campaign';
+import { getRoleDisplayName } from '../../utils/roleMapping';
+import MemberMonitoring from '../../components/Admin/MemberMonitoring';
 
 export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -75,6 +78,8 @@ export const AdminDashboard: React.FC = () => {
   const { data: loginLogs } = useCollection<any>('login_logs');
   const { data: fileUploads } = useCollection<any>('uploaded_files');
   const { data: contentTasks } = useCollection<any>('content_tasks');
+  const { data: contentLeads } = useCollection<any>('content_leads');
+  const { data: contentIdeas } = useCollection<any>('content_ideas');
   const { data: notifications } = useCollection<any>('notifications');
   
 
@@ -219,6 +224,8 @@ export const AdminDashboard: React.FC = () => {
 
   // Function to render member dashboard based on their role
   const renderMemberDashboard = (member: User) => {
+    console.log('Rendering dashboard for member:', member.name, 'with role:', member.role);
+    
     // Create a mock user object for the dashboard with the member's data
     const mockUser = {
       ...member,
@@ -234,23 +241,32 @@ export const AdminDashboard: React.FC = () => {
 
     switch (member.role) {
       case 'design':
-      case 'content-creator':
+        console.log('Rendering ContentDashboard for:', member.name);
         return <ContentDashboard />;
       case 'dev':
+        console.log('Rendering DeveloperDashboard for:', member.name);
         return <DeveloperDashboard />;
       case 'sales':
+        console.log('Rendering SalesDashboard for:', member.name);
         return <SalesDashboard />;
       case 'campaign':
+        console.log('Rendering CampaignDashboard for:', member.name);
         return <CampaignDashboard />;
+      case 'marketing':
+        console.log('Rendering SalesDashboard for marketing role:', member.name);
+        return <SalesDashboard />; // Using SalesDashboard for marketing for now
       case 'cyber':
       case 'analyst':
+        console.log('Rendering DeveloperDashboard for:', member.name);
         return <DeveloperDashboard />;
       default:
+        console.log('No dashboard found for role:', member.role, 'member:', member.name);
         return (
           <div className="p-6 text-center">
             <div className="text-gray-500 mb-4">
               <Users className="w-12 h-12 mx-auto mb-2" />
               <p>No dashboard available for role: {member.role}</p>
+              <p className="text-sm mt-2">Member: {member.name}</p>
             </div>
           </div>
         );
@@ -380,7 +396,6 @@ export const AdminDashboard: React.FC = () => {
         email: '', // Will be filled during registration
         role: memberForm.role,
         team: memberForm.team,
-        bio: '', // Default empty bio
         github: '',
         linkedin: '',
         phone: '',
@@ -579,7 +594,12 @@ export const AdminDashboard: React.FC = () => {
 
     setIsLoading(true);
     try {
-      await createAnnouncement(announcementForm);
+      await createAnnouncement({
+        ...announcementForm,
+        targetType: announcementForm.targetType === '' ? undefined : announcementForm.targetType,
+        companyId: user?.companyId || 'default',
+        createdBy: user?.uid || ''
+      });
 
       setAnnouncementForm({ 
         title: '', 
@@ -623,55 +643,12 @@ export const AdminDashboard: React.FC = () => {
     { id: 'team-management', label: 'Team Management', icon: Users },
     { id: 'member-monitoring', label: 'Member Monitoring', icon: Monitor },
     { id: 'activity-logs', label: 'Activity Logs', icon: Activity },
-    { id: 'file-tracking', label: 'File Tracking', icon: HardDrive },
     { id: 'login-logs', label: 'Login Logs', icon: LogIn },
     { id: 'system-analytics', label: 'System Analytics', icon: TrendingUp }
   ];
 
   return (
     <Layout>
-      {/* Admin View Mode Styles */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          .admin-view-mode {
-            pointer-events: none;
-          }
-          
-          .admin-view-mode button:not(.navigation-button),
-          .admin-view-mode input,
-          .admin-view-mode textarea,
-          .admin-view-mode select,
-          .admin-view-mode [role="button"],
-          .admin-view-mode [onclick],
-          .admin-view-mode [onchange],
-          .admin-view-mode [onsubmit] {
-            pointer-events: none !important;
-            opacity: 0.6;
-            cursor: not-allowed !important;
-          }
-          
-          .admin-view-mode .navigation-button {
-            pointer-events: auto !important;
-            opacity: 1 !important;
-            cursor: pointer !important;
-          }
-          
-          .admin-view-mode a[href] {
-            pointer-events: auto !important;
-            opacity: 1 !important;
-            cursor: pointer !important;
-          }
-          
-          .admin-view-mode .tab-button,
-          .admin-view-mode .nav-button,
-          .admin-view-mode .menu-button {
-            pointer-events: auto !important;
-            opacity: 1 !important;
-            cursor: pointer !important;
-          }
-        `
-      }} />
-      
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
@@ -740,40 +717,40 @@ export const AdminDashboard: React.FC = () => {
         {/* Tab Content */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Button
-                onClick={() => setShowCreateMember(true)}
-                className="flex items-center justify-center space-x-2 py-4"
-              >
-                <UserPlus className="w-5 h-5" />
-                <span>Add Member</span>
-              </Button>
-              <Button
-                onClick={() => setShowCreateProject(true)}
-                variant="outline"
-                className="flex items-center justify-center space-x-2 py-4"
-              >
-                <Target className="w-5 h-5" />
-                <span>New Project</span>
-              </Button>
-              <Button
-                onClick={() => setShowCreateAnnouncement(true)}
-                variant="outline"
-                className="flex items-center justify-center space-x-2 py-4"
-              >
-                <Bell className="w-5 h-5" />
-                <span>Announcement</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="flex items-center justify-center space-x-2 py-4"
-                onClick={() => window.location.href = '/admin/contracts'}
-              >
-                <FileText className="w-5 h-5" />
-                <span>Contracts</span>
-              </Button>
-            </div>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Button
+            onClick={() => setShowCreateMember(true)}
+            className="flex items-center justify-center space-x-2 py-4"
+          >
+            <UserPlus className="w-5 h-5" />
+            <span>Add Member</span>
+          </Button>
+          <Button
+            onClick={() => setShowCreateProject(true)}
+            variant="outline"
+            className="flex items-center justify-center space-x-2 py-4"
+          >
+            <Target className="w-5 h-5" />
+            <span>New Project</span>
+          </Button>
+          <Button
+            onClick={() => setShowCreateAnnouncement(true)}
+            variant="outline"
+            className="flex items-center justify-center space-x-2 py-4"
+          >
+            <Bell className="w-5 h-5" />
+            <span>Announcement</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="flex items-center justify-center space-x-2 py-4"
+            onClick={() => window.location.href = '/admin/contracts'}
+          >
+            <FileText className="w-5 h-5" />
+            <span>Contracts</span>
+          </Button>
+        </div>
 
         {/* Member Lists */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -959,12 +936,12 @@ export const AdminDashboard: React.FC = () => {
         </Card>
 
             {/* Team Management Overview */}
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <Users className="w-5 h-5 text-blue-600" />
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Users className="w-5 h-5 text-blue-600" />
                   <h2 className="text-lg font-semibold text-gray-900">Team Overview</h2>
-                </div>
+            </div>
                 <Button
                   onClick={() => setActiveTab('team-management')}
                   variant="outline"
@@ -972,26 +949,26 @@ export const AdminDashboard: React.FC = () => {
                 >
                   Manage Teams
                 </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {teams?.map((team) => {
-                  const teamMembers = getTeamMembers(team.name);
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                         {teams?.map((team) => {
+               const teamMembers = getTeamMembers(team.name);
                   const activeMembers = teamMembers.filter(member => member.status === 'active');
                   const teamStats = getTeamStats()[team.name];
                   
-                  return (
+               return (
                     <div key={team.id} className="p-4 border border-gray-200 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-gray-900">{team.name}</h3>
-                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                   <div className="flex items-center justify-between mb-3">
+                     <h3 className="font-semibold text-gray-900">{team.name}</h3>
+                     <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                           {activeMembers.length} active
-                        </span>
-                      </div>
-                      
+                     </span>
+                   </div>
+                   
                       <div className="space-y-3">
                         <div className="text-sm text-gray-600 text-center">
                           <span className="font-medium">{team.description || 'No description'}</span>
-                        </div>
+                     </div>
                         
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="text-center bg-white rounded-lg p-2">
@@ -1135,134 +1112,7 @@ export const AdminDashboard: React.FC = () => {
 
         {/* Member Monitoring Tab */}
         {activeTab === 'member-monitoring' && (
-          <div className="space-y-6">
-            <Card>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <Monitor className="w-5 h-5 text-blue-600" />
-                  Member Monitoring
-                </h2>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={dateRange}
-                    onChange={(e) => setDateRange(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="1">Last 24 hours</option>
-                    <option value="7">Last 7 days</option>
-                    <option value="30">Last 30 days</option>
-                    <option value="90">Last 90 days</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Member Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {activeMembers.map((member) => {
-                  const stats = getMemberStats(member.uid);
-                  const activities = getMemberActivity(member.uid);
-                  const recentActivities = activities.slice(0, 3);
-                  
-                  return (
-                    <div key={member.uid} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-medium">
-                              {member.name.charAt(0)}
-                            </span>
-                          </div>
-                          <div>
-                            <h3 className="font-medium text-gray-900">{member.name}</h3>
-                            <p className="text-sm text-gray-500">{member.role} • {member.team}</p>
-                          </div>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          member.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {member.status}
-                        </span>
-                      </div>
-
-                      {/* Basic Information */}
-                      <div className="mb-4">
-                        <div className="text-xs text-gray-600 space-y-1">
-                          <div><strong>Email:</strong> {member.email}</div>
-                          <div><strong>ID Code:</strong> {member.idCode}</div>
-                          <div><strong>Role:</strong> {member.role}</div>
-                          <div><strong>Team:</strong> {member.team}</div>
-                          <div><strong>Status:</strong> {member.status}</div>
-                        </div>
-                      </div>
-
-                      {/* Stats */}
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-blue-600">{stats.totalActivities}</div>
-                          <div className="text-xs text-gray-500">Activities</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-green-600">{stats.totalUploads}</div>
-                          <div className="text-xs text-gray-500">Uploads</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-purple-600">{stats.totalTasks}</div>
-                          <div className="text-xs text-gray-500">Tasks</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-orange-600">{stats.completedTasks}</div>
-                          <div className="text-xs text-gray-500">Completed</div>
-                        </div>
-                      </div>
-
-                      {/* Additional Stats */}
-                      <div className="mb-4">
-                        <div className="text-xs text-gray-600 space-y-1">
-                          <div><strong>Login Sessions:</strong> {stats.totalLogins}</div>
-                          <div><strong>Last Login:</strong> {stats.lastLogin ? new Date(stats.lastLogin).toLocaleDateString() : 'Never'}</div>
-                          <div><strong>Last Activity:</strong> {stats.lastActivity ? new Date(stats.lastActivity).toLocaleDateString() : 'Never'}</div>
-                        </div>
-                      </div>
-
-                      {/* Recent Activity */}
-                      <div className="mb-4">
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Recent Activity</h5>
-                        <div className="space-y-1">
-                          {activities.slice(0, 3).map((activity, index) => (
-                            <div key={index} className="flex items-center gap-2 text-xs">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <span className="text-gray-700 truncate">{activity.action}</span>
-                              <span className="text-gray-400 text-xs">
-                                {activity.timestamp ? new Date(activity.timestamp).toLocaleDateString() : 'Unknown'}
-                              </span>
-                            </div>
-                          ))}
-                          {activities.length === 0 && (
-                            <p className="text-xs text-gray-400">No recent activity</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-gray-200">
-                        <Button
-                          onClick={() => {
-                            setSelectedMember(member);
-                            setShowMemberDetails(true);
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Dashboard
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          </div>
+          <MemberMonitoring />
         )}
 
         {/* Activity Logs Tab */}
@@ -1320,98 +1170,9 @@ export const AdminDashboard: React.FC = () => {
                     <h3 className="text-lg font-medium text-gray-600 mb-2">No activity logs</h3>
                     <p className="text-gray-500">Activity logs will appear here as members use the system</p>
                   </div>
-                )}
-              </div>
-            </Card>
+            )}
           </div>
-        )}
-
-        {/* File Tracking Tab */}
-        {activeTab === 'file-tracking' && (
-          <div className="space-y-6">
-            <Card>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <HardDrive className="w-5 h-5 text-blue-600" />
-                  File Tracking
-                </h2>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={dateRange}
-                    onChange={(e) => setDateRange(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="1">Last 24 hours</option>
-                    <option value="7">Last 7 days</option>
-                    <option value="30">Last 30 days</option>
-                    <option value="90">Last 90 days</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {fileUploads?.slice(0, 50).map((file, index) => {
-                  const member = users?.find(u => u.uid === file.uploadedBy);
-                  return (
-                    <div key={index} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <FileUp className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900">{file.fileName}</span>
-                          <span className="text-sm text-gray-500">by {member?.name || 'Unknown User'}</span>
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {file.description || 'No description'} • {file.category}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          {file.tags?.map((tag: string, tagIndex: number) => (
-                            <span key={tagIndex} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {file.uploadedAt ? new Date(file.uploadedAt).toLocaleString() : 'Unknown time'}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          onClick={() => window.open(file.fileURL, '_blank')}
-                          variant="ghost"
-                          size="sm"
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            const link = document.createElement('a');
-                            link.href = file.fileURL;
-                            link.download = file.fileName;
-                            link.click();
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-                
-                {(!fileUploads || fileUploads.length === 0) && (
-                  <div className="text-center py-12">
-                    <HardDrive className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-600 mb-2">No file uploads</h3>
-                    <p className="text-gray-500">File uploads will appear here as members upload files</p>
-                  </div>
-                )}
-              </div>
-            </Card>
+        </Card>
           </div>
         )}
 
@@ -1562,11 +1323,11 @@ export const AdminDashboard: React.FC = () => {
                             {teamStats?.memberCount || 0} members
                           </span>
                         </div>
-                        <div className="space-y-2">
+                   <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Activities:</span>
                             <span className="font-medium">{teamStats?.totalActivities || 0}</span>
-                          </div>
+                     </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Uploads:</span>
                             <span className="font-medium">{teamStats?.totalUploads || 0}</span>
@@ -1602,14 +1363,14 @@ export const AdminDashboard: React.FC = () => {
                         .slice(0, 5)
                         .map((member, index) => (
                           <div key={member.uid} className="flex items-center justify-between text-sm">
-                            <span className="text-gray-700">{member.name}</span>
+                           <span className="text-gray-700">{member.name}</span>
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                               {member.activityCount} activities
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
+                           </span>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h4 className="font-medium text-gray-900 mb-3">Recent Logins</h4>
                     <div className="space-y-2">
@@ -1621,9 +1382,9 @@ export const AdminDashboard: React.FC = () => {
                             <span className="text-gray-500">
                               {log.timestamp ? new Date(log.timestamp).toLocaleDateString() : 'Unknown'}
                             </span>
-                          </div>
-                        );
-                      })}
+                 </div>
+               );
+             })}
                     </div>
                   </div>
                 </div>
@@ -1632,43 +1393,52 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Member Details Modal */}
+        {/* Member Dashboard Full Page */}
         {showMemberDetails && selectedMember && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
-            <div className="bg-white rounded-lg w-full h-[95vh] overflow-hidden">
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">
-                      {selectedMember.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      {selectedMember.name}'s Dashboard
-                    </h2>
-                    <p className="text-sm text-gray-600">{selectedMember.role} • {selectedMember.team}</p>
-                  </div>
+          <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">
+                    {selectedMember.name.charAt(0)}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
-                    View Only Mode
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowMemberDetails(false)}
-                  >
-                    Close
-                  </Button>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {selectedMember.name}'s Dashboard
+                  </h2>
+                  <p className="text-sm text-gray-600">{selectedMember.role} • {selectedMember.team}</p>
                 </div>
               </div>
-              
-              {/* Dashboard Container with Disabled Interactions */}
-              <div className="h-full overflow-y-auto">
-                <div className="admin-view-mode">
-                  {renderMemberDashboard(selectedMember)}
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                  Admin View Mode
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowMemberDetails(false)}
+                >
+                  Close Dashboard
+                </Button>
+              </div>
+            </div>
+            
+            {/* Dashboard Content */}
+            <div className="min-h-screen bg-gray-50">
+              {/* Role Indicator */}
+              <div className="bg-blue-100 border-b border-blue-200 px-6 py-2">
+                <div className="flex items-center gap-2 text-sm text-blue-800">
+                  <span className="font-medium">Dashboard Role:</span>
+                  <span className="px-2 py-1 bg-blue-200 rounded-full text-xs font-medium">
+                    {selectedMember.role}
+                  </span>
+                  <span className="text-blue-600">
+                    ({getRoleDisplayName(selectedMember.role)})
+                  </span>
                 </div>
               </div>
+              {renderMemberDashboard(selectedMember)}
             </div>
           </div>
         )}
@@ -1681,7 +1451,7 @@ export const AdminDashboard: React.FC = () => {
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
                     <Users className="w-5 h-5 text-white" />
-                  </div>
+          </div>
                   <div>
                     <h2 className="text-xl font-semibold text-gray-900">
                       {selectedTeam.name} - Team Dashboard

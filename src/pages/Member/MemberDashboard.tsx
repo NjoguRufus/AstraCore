@@ -24,7 +24,8 @@ import {
   Calendar,
   X,
   Info,
-  FileText
+  FileText,
+  Eye
 } from 'lucide-react';
 import { Project, Announcement, User } from '../../types';
 import { getRoleDisplayName } from '../../utils/roleMapping';
